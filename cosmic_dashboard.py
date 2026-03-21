@@ -17,6 +17,7 @@ import uvicorn
 DB_PATH = Path("omega_ultra_audit.db")
 DEFAULT_TIER = 0
 MAX_TIER = 10
+APP_VERSION = "1.3.0"
 INTELLIGENCE_TIER = DEFAULT_TIER
 RARITY_COUNTS = {
     "common": 80,
@@ -27,6 +28,7 @@ RARITY_COUNTS = {
     "mythical": 20,
     "prismatic": 10,
 }
+TOTAL_ENTITIES = sum(RARITY_COUNTS.values())
 
 
 class AuditLedger:
@@ -65,12 +67,12 @@ class AuditLedger:
 
 
 audit = AuditLedger()
-app = FastAPI(title="Cosmic Operating System", version="1.2.0")
+app = FastAPI(title="Cosmic Operating System", version=APP_VERSION)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
-    html = """<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -79,54 +81,54 @@ async def index() -> HTMLResponse:
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
-        :root {
+        :root {{
             color-scheme: dark;
-        }
-        body {
+        }}
+        body {{
             background: radial-gradient(circle at center, #0a001f 0%, #05000f 35%, #000 100%);
             font-family: 'Orbitron', monospace;
             color: #00ffff;
             margin: 0;
             overflow-x: hidden;
             min-height: 100vh;
-        }
-        .neon { text-shadow: 0 0 42px #00ffff, 0 0 96px #ff00ff, 0 0 168px #ff00ff; }
-        canvas { position: fixed; inset: 0; z-index: -1; }
-        .glass-panel {
+        }}
+        .neon {{ text-shadow: 0 0 42px #00ffff, 0 0 96px #ff00ff, 0 0 168px #ff00ff; }}
+        canvas {{ position: fixed; inset: 0; z-index: -1; }}
+        .glass-panel {{
             background: linear-gradient(180deg, rgba(7, 7, 26, 0.82), rgba(0, 0, 0, 0.66));
             backdrop-filter: blur(18px);
             box-shadow: 0 0 40px rgba(132, 0, 255, 0.16);
-        }
-        .god {
+        }}
+        .god {{
             transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
             background: rgba(10, 0, 30, 0.95);
             border: 2px solid;
             box-shadow: 0 0 18px currentColor;
             font-size: 0.78rem;
-        }
+        }}
         .god:hover,
-        .god:focus-visible {
+        .god:focus-visible {{
             transform: translateY(-4px) scale(1.03);
             box-shadow: 0 0 38px currentColor;
             outline: none;
-        }
-        .god.active {
+        }}
+        .god.active {{
             transform: scale(1.04);
             box-shadow: 0 0 44px currentColor;
-        }
-        .common { border-color: #888888; color: #c2c9d6; }
-        .uncommon { border-color: #00ff88; color: #96ffd8; }
-        .rare { border-color: #0088ff; color: #8fd1ff; }
-        .legendary { border-color: #aa00ff; color: #dda4ff; }
-        .divine { border-color: #ffdd00; color: #fff0a3; }
-        .mythical { border-color: #ff2200; color: #ffb3a5; }
-        .prismatic { border-color: #ff00ff; color: #ffd7ff; animation: rainbow 2s infinite linear; }
-        .metric-label {
+        }}
+        .common {{ border-color: #888888; color: #c2c9d6; }}
+        .uncommon {{ border-color: #00ff88; color: #96ffd8; }}
+        .rare {{ border-color: #0088ff; color: #8fd1ff; }}
+        .legendary {{ border-color: #aa00ff; color: #dda4ff; }}
+        .divine {{ border-color: #ffdd00; color: #fff0a3; }}
+        .mythical {{ border-color: #ff2200; color: #ffb3a5; }}
+        .prismatic {{ border-color: #ff00ff; color: #ffd7ff; animation: rainbow 2s infinite linear; }}
+        .metric-label {{
             letter-spacing: 0.35em;
             text-transform: uppercase;
             font-size: 0.72rem;
-        }
-        .sr-only {
+        }}
+        .sr-only {{
             position: absolute;
             width: 1px;
             height: 1px;
@@ -136,15 +138,15 @@ async def index() -> HTMLResponse:
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
             border: 0;
-        }
-        @keyframes rainbow {
-            0% { border-color: #ff00ff; }
-            50% { border-color: #00ffff; }
-            100% { border-color: #ffff00; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .god, .prismatic { transition: none; animation: none; }
-        }
+        }}
+        @keyframes rainbow {{
+            0% {{ border-color: #ff00ff; }}
+            50% {{ border-color: #00ffff; }}
+            100% {{ border-color: #ffff00; }}
+        }}
+        @media (prefers-reduced-motion: reduce) {{
+            .god, .prismatic {{ transition: none; animation: none; }}
+        }}
     </style>
 </head>
 <body>
@@ -153,7 +155,7 @@ async def index() -> HTMLResponse:
     <div class="max-w-7xl mx-auto p-6 relative z-10">
         <header class="text-center py-4 md:py-8">
             <h1 class="text-4xl md:text-7xl xl:text-8xl font-black neon tracking-[0.24em] md:tracking-[0.45em] xl:tracking-[0.68em] mb-5">Ω COSMIC OPERATING SYSTEM</h1>
-            <p class="text-lg md:text-3xl text-purple-300">320 Gods • 7 Rarity Classes • Infinite Companies</p>
+            <p class="text-lg md:text-3xl text-purple-300">{TOTAL_ENTITIES} Gods • 7 Rarity Classes • Infinite Companies</p>
             <p class="text-cyan-200/75 mt-3 max-w-4xl mx-auto">A live pantheon dashboard for Ω-tier awakenings, audit-backed telemetry, and continuously updated cosmic status.</p>
         </header>
 
@@ -175,11 +177,11 @@ async def index() -> HTMLResponse:
                             <dl class="grid grid-cols-2 gap-3 mt-4 text-sm text-cyan-100/85">
                                 <div>
                                     <dt class="text-cyan-300/70">Entities</dt>
-                                    <dd id="entity-count" class="text-xl text-cyan-100">320</dd>
+                                    <dd id="entity-count" class="text-xl text-cyan-100">{TOTAL_ENTITIES}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-cyan-300/70">Visible</dt>
-                                    <dd id="visible-count" class="text-xl text-cyan-100">320</dd>
+                                    <dd id="visible-count" class="text-xl text-cyan-100">{TOTAL_ENTITIES}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-cyan-300/70">Audit Events</dt>
@@ -188,6 +190,19 @@ async def index() -> HTMLResponse:
                                 <div>
                                     <dt class="text-cyan-300/70">Last Awakening</dt>
                                     <dd id="last-awakening" class="text-sm text-fuchsia-200">Pending</dd>
+                                </div>
+                            </dl>
+                        </div>
+                        <div class="rounded-3xl border border-fuchsia-500/40 bg-black/30 p-5 text-left">
+                            <div class="metric-label text-fuchsia-300">Runtime</div>
+                            <dl class="grid gap-2 mt-4 text-sm text-fuchsia-100/85">
+                                <div class="flex items-center justify-between gap-4">
+                                    <dt>API Version</dt>
+                                    <dd id="api-version">{APP_VERSION}</dd>
+                                </div>
+                                <div class="flex items-center justify-between gap-4">
+                                    <dt>Entity Budget</dt>
+                                    <dd>{TOTAL_ENTITIES}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -234,11 +249,12 @@ async def index() -> HTMLResponse:
     </div>
 
     <script>
-        const cosmicData = {
-            rarityCounts: {"common": 80, "uncommon": 70, "rare": 60, "legendary": 50, "divine": 30, "mythical": 20, "prismatic": 10},
-        };
+        const cosmicData = {{
+            rarityCounts: {json.dumps(RARITY_COUNTS)},
+            totalEntities: {TOTAL_ENTITIES},
+            version: {json.dumps(APP_VERSION)},
+        }};
 
-        const totalEntities = Object.values(cosmicData.rarityCounts).reduce((sum, count) => sum + count, 0);
         const canvas = document.getElementById('cosmos');
         const ctx = canvas.getContext('2d');
         const eventNode = document.getElementById('event');
@@ -253,142 +269,145 @@ async def index() -> HTMLResponse:
         const lastAwakeningNode = document.getElementById('last-awakening');
         const raritySummaryNode = document.getElementById('rarity-summary');
         const entityCountNode = document.getElementById('entity-count');
+        const versionNode = document.getElementById('api-version');
 
-        entityCountNode.textContent = String(totalEntities);
+        entityCountNode.textContent = String(cosmicData.totalEntities);
+        versionNode.textContent = cosmicData.version;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const particleCount = reduceMotion ? 0 : Math.min(12000, Math.max(2400, Math.floor((window.innerWidth * window.innerHeight) / 70)));
         const particles = new Float32Array(particleCount * 3);
-        for (let i = 0; i < particles.length; i += 3) {
+        for (let i = 0; i < particles.length; i += 3) {{
             particles[i] = (Math.random() - 0.5) * Math.max(window.innerWidth * 1.4, 2200);
             particles[i + 1] = (Math.random() - 0.5) * Math.max(window.innerHeight * 1.2, 1600);
             particles[i + 2] = Math.random() * 1.6 + 0.5;
-        }
+        }}
 
-        const galaxies = reduceMotion ? [] : Array.from({ length: 5 }, (_, galaxyIndex) => {
-            return Array.from({ length: 600 }, (_, starIndex) => {
+        const galaxies = reduceMotion ? [] : Array.from({{ length: 5 }}, (_, galaxyIndex) => {{
+            return Array.from({{ length: 600 }}, (_, starIndex) => {{
                 const arm = starIndex % 7;
                 const angle = starIndex * 0.08 + arm * 2.14 + galaxyIndex * 0.85;
                 const radius = Math.sqrt(starIndex) * (6 + galaxyIndex * 3);
-                return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
-            });
-        });
+                return {{ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius }};
+            }});
+        }});
 
-        const godsData = Object.entries(cosmicData.rarityCounts).flatMap(([rarity, count]) => {
+        const godsData = Object.entries(cosmicData.rarityCounts).flatMap(([rarity, count]) => {{
             const label = rarity.charAt(0).toUpperCase() + rarity.slice(1);
-            return Array.from({ length: count }, (_, index) => ({
+            return Array.from({{ length: count }}, (_, index) => ({{
                 rarity,
-                name: `${label}God-${index + 1}`,
-            }));
-        });
+                name: `${{label}}God-${{index + 1}}`,
+            }}));
+        }});
 
         raritySummaryNode.innerHTML = Object.entries(cosmicData.rarityCounts).map(([rarity, count]) => `
-            <span class="px-3 py-2 rounded-full border border-cyan-500/30 bg-black/30 ${rarity}">${rarity.toUpperCase()} · ${count}</span>
+            <span class="px-3 py-2 rounded-full border border-cyan-500/30 bg-black/30 ${{rarity}}">${{rarity.toUpperCase()}} · ${{count}}</span>
         `).join('');
 
         let visibleGods = godsData;
         let activeGod = null;
 
-        function resizeCanvas() {
+        function resizeCanvas() {{
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-        }
+        }}
 
-        function engine() {
-            if (reduceMotion) {
+        function engine() {{
+            if (reduceMotion) {{
                 return;
-            }
+            }}
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < particles.length; i += 3) {
+            for (let i = 0; i < particles.length; i += 3) {{
                 particles[i] += Math.sin(i * 0.005) * 0.12;
                 particles[i + 1] += Math.cos(i * 0.005) * 0.12;
                 ctx.fillStyle = '#00ffff';
                 ctx.globalAlpha = 0.18 + (particles[i + 2] / 4);
                 ctx.fillRect(particles[i] + canvas.width / 2, particles[i + 1] + canvas.height / 2, particles[i + 2], particles[i + 2]);
-            }
+            }}
             const colors = ['#ff00ff', '#00ffaa', '#ffff00', '#00aaff', '#ff8800'];
-            galaxies.forEach((galaxy, galaxyIndex) => {
+            galaxies.forEach((galaxy, galaxyIndex) => {{
                 ctx.fillStyle = colors[galaxyIndex];
                 ctx.globalAlpha = 0.5;
-                galaxy.forEach((point) => {
+                galaxy.forEach((point) => {{
                     ctx.fillRect(point.x * (1 + galaxyIndex * 0.24) + canvas.width / 2, point.y * (1 + galaxyIndex * 0.24) + canvas.height / 2, 2.1, 2.1);
-                });
-            });
+                }});
+            }});
             ctx.globalAlpha = 1;
             requestAnimationFrame(engine);
-        }
+        }}
 
-        function renderPantheon() {
+        function renderPantheon() {{
             visibleCountNode.textContent = String(visibleGods.length);
             pantheonNode.innerHTML = visibleGods.map((god) => `
-                <button class="god rounded-3xl text-center cursor-pointer font-bold p-3 ${god.rarity} ${activeGod === god.name ? 'active' : ''}" data-god="${god.name}">
-                    <span class="block">${god.name}</span>
-                    <span class="text-[0.68rem] opacity-70 mt-1 block">${god.rarity.toUpperCase()}</span>
+                <button class="god rounded-3xl text-center cursor-pointer font-bold p-3 ${{god.rarity}} ${{activeGod === god.name ? 'active' : ''}}" data-god="${{god.name}}">
+                    <span class="block">${{god.name}}</span>
+                    <span class="text-[0.68rem] opacity-70 mt-1 block">${{god.rarity.toUpperCase()}}</span>
                 </button>
             `).join('') || '<div class="col-span-full text-center text-cyan-200/70 py-10">No gods match the current filter.</div>';
-        }
+        }}
 
-        function applyFilters() {
+        function applyFilters() {{
             const query = searchNode.value.trim().toLowerCase();
             const rarity = rarityNode.value;
-            visibleGods = godsData.filter((god) => {
+            visibleGods = godsData.filter((god) => {{
                 const matchesQuery = !query || god.name.toLowerCase().includes(query);
                 const matchesRarity = rarity === 'all' || god.rarity === rarity;
                 return matchesQuery && matchesRarity;
-            });
+            }});
             renderPantheon();
-        }
+        }}
 
-        function renderEvents(events) {
-            eventCountNode.textContent = String(events.length);
-            if (events[0]?.payload?.god) {
+        function renderEvents(events, totalAuditEvents) {{
+            eventCountNode.textContent = String(totalAuditEvents ?? events.length);
+            if (events[0]?.payload?.god) {{
                 lastAwakeningNode.textContent = events[0].payload.god;
-            }
+            }}
             feedNode.innerHTML = events.map((item) => `
                 <div class="border border-cyan-500/40 rounded-2xl p-4 bg-cyan-500/5">
                     <div class="flex items-center justify-between gap-3 flex-wrap">
-                        <div class="text-cyan-300 font-bold">${item.type}</div>
-                        <div class="text-cyan-100/60 text-xs">${item.ts}</div>
+                        <div class="text-cyan-300 font-bold">${{item.type}}</div>
+                        <div class="text-cyan-100/60 text-xs">${{item.ts}}</div>
                     </div>
-                    <div class="mt-2 text-fuchsia-200 break-words">${JSON.stringify(item.payload)}</div>
+                    <div class="mt-2 text-fuchsia-200 break-words">${{JSON.stringify(item.payload)}}</div>
                 </div>
             `).join('') || '<div class="text-cyan-100/70">No cosmic events yet.</div>';
-        }
+        }}
 
-        async function refreshStatus() {
+        async function refreshStatus() {{
             const response = await fetch('/status');
             const data = await response.json();
-            tierNode.textContent = data.tier >= 10 ? 'Ω' : `Tier ${data.tier}`;
-            metaNode.textContent = `${data.audit_events} audit events stored • DB: ${data.audit_db}`;
-            eventCountNode.textContent = String(data.audit_events);
-            renderEvents(data.recent_events);
-        }
+            tierNode.textContent = data.tier >= 10 ? 'Ω' : `Tier ${{data.tier}}`;
+            metaNode.textContent = `${{data.audit_events}} audit events stored • DB: ${{data.audit_db}}`;
+            entityCountNode.textContent = String(data.total_entities ?? cosmicData.totalEntities);
+            versionNode.textContent = data.version ?? cosmicData.version;
+            renderEvents(data.recent_events, data.audit_events);
+        }}
 
-        async function awakenGod(god) {
+        async function awakenGod(god) {{
             activeGod = god;
             renderPantheon();
-            const response = await fetch('/upgrade_intelligence', {
+            const response = await fetch('/upgrade_intelligence', {{
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ god, tier: 10 }),
-            });
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ god, tier: 10 }}),
+            }});
             const data = await response.json();
-            eventNode.innerHTML = `${god} awakened! ${data.result || 'Transcending all human intellect...'}`;
-            tierNode.textContent = data.tier >= 10 ? 'Ω' : `Tier ${data.tier}`;
-            metaNode.textContent = `Last event ${data.event_id} • ${data.timestamp}`;
+            eventNode.innerHTML = `${{god}} awakened! ${{data.result || 'Transcending all human intellect...'}}`;
+            tierNode.textContent = data.tier >= 10 ? 'Ω' : `Tier ${{data.tier}}`;
+            metaNode.textContent = `Last event ${{data.event_id}} • ${{data.timestamp}}`;
             lastAwakeningNode.textContent = god;
             await refreshStatus();
-        }
+        }}
 
-        pantheonNode.addEventListener('click', (event) => {
+        pantheonNode.addEventListener('click', (event) => {{
             const button = event.target.closest('[data-god]');
-            if (!button) {
+            if (!button) {{
                 return;
-            }
+            }}
             awakenGod(button.dataset.god);
-        });
+        }});
 
         searchNode.addEventListener('input', applyFilters);
         rarityNode.addEventListener('change', applyFilters);
@@ -413,6 +432,8 @@ async def status() -> dict:
         "audit_events": len(audit.recent_events(limit=1000)),
         "recent_events": events,
         "pantheon": RARITY_COUNTS,
+        "total_entities": TOTAL_ENTITIES,
+        "version": APP_VERSION,
     }
 
 
