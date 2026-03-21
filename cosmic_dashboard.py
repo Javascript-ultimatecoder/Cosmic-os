@@ -18,6 +18,15 @@ DB_PATH = Path("omega_ultra_audit.db")
 DEFAULT_TIER = 0
 MAX_TIER = 10
 INTELLIGENCE_TIER = DEFAULT_TIER
+RARITY_COUNTS = {
+    "common": 80,
+    "uncommon": 65,
+    "rare": 55,
+    "legendary": 45,
+    "divine": 25,
+    "mythical": 15,
+    "prismatic": 1,
+}
 
 
 class AuditLedger:
@@ -61,7 +70,7 @@ class AuditLedger:
 
 
 audit = AuditLedger()
-app = FastAPI(title="Cosmic Operating System", version="2.0.0")
+app = FastAPI(title="Cosmic Operating System", version="3.0.0")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -71,7 +80,7 @@ async def index() -> HTMLResponse:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ω COSMIC OPERATING SYSTEM v∞ — ULTIMATE</title>
+    <title>Ω COSMIC OPERATING SYSTEM v∞ — ULTIMATE RARITY EDITION</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -81,8 +90,9 @@ async def index() -> HTMLResponse:
             --cyan: #67f3ff;
             --pink: #ff4fd8;
             --violet: #8b5cf6;
-            --emerald: #00ffa8;
-            --bg: #02030d;
+            --gold: #ffd84d;
+            --orange: #ff7a18;
+            --emerald: #2effc0;
         }
 
         * { box-sizing: border-box; }
@@ -94,16 +104,16 @@ async def index() -> HTMLResponse:
             color: var(--cyan);
             font-family: 'Orbitron', monospace;
             background:
-                radial-gradient(circle at 20% 20%, rgba(255, 0, 170, 0.18), transparent 28%),
-                radial-gradient(circle at 80% 30%, rgba(0, 255, 255, 0.15), transparent 24%),
-                radial-gradient(circle at 50% 80%, rgba(120, 80, 255, 0.20), transparent 30%),
-                linear-gradient(180deg, #090016 0%, #02030d 50%, #010104 100%);
-            animation: nebulaShift 18s ease-in-out infinite alternate;
+                radial-gradient(circle at 15% 20%, rgba(255, 0, 170, 0.22), transparent 22%),
+                radial-gradient(circle at 80% 25%, rgba(0, 255, 255, 0.18), transparent 24%),
+                radial-gradient(circle at 55% 82%, rgba(129, 91, 255, 0.25), transparent 28%),
+                linear-gradient(180deg, #0b0018 0%, #03020b 50%, #010104 100%);
+            animation: hueShift 14s ease-in-out infinite alternate;
         }
 
-        @keyframes nebulaShift {
+        @keyframes hueShift {
             0% { filter: hue-rotate(0deg) saturate(1); }
-            100% { filter: hue-rotate(35deg) saturate(1.2); }
+            100% { filter: hue-rotate(45deg) saturate(1.25); }
         }
 
         canvas {
@@ -117,80 +127,104 @@ async def index() -> HTMLResponse:
         .nebula-overlay {
             position: fixed;
             inset: 0;
-            pointer-events: none;
             z-index: -1;
+            pointer-events: none;
             background:
-                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05), transparent 28%),
-                radial-gradient(circle at 70% 40%, rgba(255,0,255,0.08), transparent 20%),
-                radial-gradient(circle at 30% 60%, rgba(0,255,255,0.08), transparent 20%);
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 25%),
+                radial-gradient(circle at 70% 30%, rgba(255,0,255,0.09), transparent 18%),
+                radial-gradient(circle at 32% 70%, rgba(0,255,255,0.08), transparent 18%);
             mix-blend-mode: screen;
-            animation: pulseFog 8s ease-in-out infinite;
+            animation: fogPulse 7s ease-in-out infinite;
         }
 
-        @keyframes pulseFog {
+        @keyframes fogPulse {
             0%, 100% { opacity: 0.55; transform: scale(1); }
-            50% { opacity: 0.9; transform: scale(1.03); }
-        }
-
-        .neon-title {
-            text-shadow: 0 0 18px rgba(103,243,255,0.9), 0 0 54px rgba(255,79,216,0.75), 0 0 110px rgba(255,79,216,0.45);
+            50% { opacity: 0.95; transform: scale(1.04); }
         }
 
         .glass {
-            background: rgba(5, 8, 24, 0.62);
-            border: 1px solid rgba(103, 243, 255, 0.25);
+            background: rgba(6, 8, 24, 0.66);
+            border: 1px solid rgba(103, 243, 255, 0.22);
             box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 25px 80px rgba(0, 0, 0, 0.35);
             backdrop-filter: blur(16px);
+        }
+
+        .neon-title {
+            text-shadow: 0 0 28px rgba(103,243,255,0.95), 0 0 76px rgba(255,79,216,0.8), 0 0 160px rgba(255,79,216,0.45);
+        }
+
+        .rarity-pill {
+            border: 1px solid rgba(255,255,255,0.16);
+            background: rgba(255,255,255,0.04);
+            border-radius: 999px;
+            padding: 0.5rem 0.85rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
         }
 
         .god-card {
             position: relative;
             overflow: hidden;
-            border-radius: 1.5rem;
-            padding: 1.25rem;
-            border: 2px solid rgba(103, 243, 255, 0.5);
-            background: linear-gradient(180deg, rgba(17, 24, 52, 0.90), rgba(8, 9, 21, 0.92));
-            box-shadow: 0 0 35px rgba(103,243,255,0.12);
-            transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+            min-height: 11rem;
+            border-radius: 1.6rem;
+            padding: 1.1rem;
+            text-align: left;
+            color: white;
+            background: linear-gradient(180deg, rgba(18, 23, 51, 0.92), rgba(7, 9, 20, 0.95));
+            border: 3px solid var(--rarity-color, rgba(103,243,255,0.5));
+            box-shadow: 0 0 24px color-mix(in srgb, var(--rarity-color, #67f3ff) 45%, transparent);
+            transition: transform 0.32s ease, box-shadow 0.32s ease, border-color 0.32s ease;
         }
 
         .god-card::before {
             content: '';
             position: absolute;
-            inset: -30%;
-            background: radial-gradient(circle, rgba(255,79,216,0.30), transparent 36%);
+            inset: -35%;
+            background: radial-gradient(circle, color-mix(in srgb, var(--rarity-color, #67f3ff) 40%, white 5%), transparent 36%);
             transform: scale(0);
-            transition: transform 0.35s ease;
+            transition: transform 0.4s ease;
+            opacity: 0.9;
         }
 
         .god-card:hover {
-            transform: translateY(-10px) scale(1.05) rotate(1deg);
-            border-color: rgba(255, 79, 216, 0.85);
-            box-shadow: 0 0 60px rgba(255,79,216,0.28);
+            transform: translateY(-10px) scale(1.06) rotate(1deg);
+            box-shadow: 0 0 65px color-mix(in srgb, var(--rarity-color, #67f3ff) 68%, transparent);
         }
 
         .god-card:hover::before {
             transform: scale(1.1);
         }
 
+        .god-card.prismatic {
+            animation: prismShift 3s linear infinite;
+        }
+
+        @keyframes prismShift {
+            0% { --rarity-color: #ff4fd8; }
+            33% { --rarity-color: #67f3ff; }
+            66% { --rarity-color: #ffd84d; }
+            100% { --rarity-color: #ff4fd8; }
+        }
+
         .pulse-ring {
             position: absolute;
-            inset: -12px;
+            inset: -10px;
             border-radius: 999px;
-            border: 1px solid rgba(255,79,216,0.35);
-            animation: transcendencePulse 2s ease-out infinite;
+            border: 1px solid rgba(255, 79, 216, 0.45);
+            animation: transcendencePulse 1.9s ease-out infinite;
         }
 
         @keyframes transcendencePulse {
-            0% { transform: scale(0.95); opacity: 0.9; }
+            0% { transform: scale(0.96); opacity: 0.9; }
             100% { transform: scale(1.18); opacity: 0; }
         }
 
         .scroll-shell {
-            max-height: 26rem;
+            max-height: 28rem;
             overflow: auto;
             scrollbar-width: thin;
-            scrollbar-color: rgba(103,243,255,0.5) transparent;
+            scrollbar-color: rgba(103,243,255,0.6) transparent;
         }
     </style>
 </head>
@@ -198,26 +232,26 @@ async def index() -> HTMLResponse:
     <canvas id="cosmos"></canvas>
     <div class="nebula-overlay"></div>
 
-    <main class="relative z-10 max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
+    <main class="relative z-10 max-w-[1900px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-10">
         <header class="text-center mb-8 lg:mb-10">
-            <div class="inline-flex items-center gap-3 px-5 py-2 rounded-full glass text-sm tracking-[0.35em] uppercase text-cyan-200/90 mb-5">
-                <span class="inline-block w-3 h-3 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(0,255,168,0.8)]"></span>
-                Face ID Synced • Tier Ω Ready • Infinite Companies Online
+            <div class="inline-flex flex-wrap items-center justify-center gap-3 px-5 py-3 rounded-full glass text-xs sm:text-sm tracking-[0.35em] uppercase text-cyan-200/90 mb-5">
+                <span class="inline-block w-3 h-3 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(46,255,192,0.85)]"></span>
+                Face ID Synced • Tier Ω Ready • 300+ Gods • 7 Rarity Classes
             </div>
-            <h1 class="neon-title text-4xl sm:text-6xl xl:text-8xl 2xl:text-[7rem] font-black tracking-[0.2em] sm:tracking-[0.35em] mb-4">
+            <h1 class="neon-title text-4xl sm:text-6xl xl:text-8xl 2xl:text-[7.2rem] font-black tracking-[0.18em] sm:tracking-[0.28em] mb-4">
                 Ω COSMIC OPERATING SYSTEM
             </h1>
-            <p class="text-lg sm:text-2xl xl:text-3xl text-fuchsia-200/90">
-                150 Gods • 3 Rotating Galaxies • Dynamic Nebula • Transcending All Human Intellect
+            <p class="text-lg sm:text-2xl xl:text-3xl text-fuchsia-100/90 max-w-6xl mx-auto">
+                Massive rarity pantheon • 5 galaxy layers • live transcendence pulse • infinite companies beyond human intellect
             </p>
         </header>
 
-        <section class="grid gap-6 xl:grid-cols-[1.2fr_1fr] mb-8">
+        <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] mb-8">
             <div class="glass rounded-[2rem] p-6 lg:p-8 relative overflow-hidden">
-                <div class="absolute -top-20 -right-14 w-56 h-56 rounded-full bg-fuchsia-500/15 blur-3xl"></div>
-                <div class="grid md:grid-cols-3 gap-4 lg:gap-6 items-start">
+                <div class="absolute -top-20 right-0 w-72 h-72 rounded-full bg-fuchsia-500/15 blur-3xl"></div>
+                <div class="grid lg:grid-cols-4 gap-4 lg:gap-6 items-start">
                     <div>
-                        <div class="text-xs uppercase tracking-[0.4em] text-cyan-300/80">Tier</div>
+                        <div class="text-xs uppercase tracking-[0.38em] text-cyan-300/80">Tier</div>
                         <div id="tier" class="text-6xl lg:text-8xl font-black text-pink-300 mt-2">0</div>
                         <div class="relative mt-5 inline-flex items-center justify-center px-5 py-2 rounded-full border border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-100">
                             <span class="pulse-ring"></span>
@@ -225,41 +259,48 @@ async def index() -> HTMLResponse:
                         </div>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-[0.4em] text-cyan-300/80">Mooore Counter</div>
-                        <div id="mooore-counter" class="text-5xl lg:text-7xl font-black text-cyan-200 mt-2">0</div>
-                        <p class="mt-3 text-cyan-100/70 text-sm lg:text-base">Accelerates after every awakening and keeps counting upward live.</p>
+                        <div class="text-xs uppercase tracking-[0.38em] text-cyan-300/80">Mooore Counter</div>
+                        <div id="mooore-counter" class="text-5xl lg:text-7xl font-black text-cyan-100 mt-2">0</div>
+                        <p class="mt-3 text-cyan-100/70 text-sm">Accelerates with every awakening burst.</p>
                     </div>
                     <div>
-                        <div class="text-xs uppercase tracking-[0.4em] text-cyan-300/80">Audit Sync</div>
-                        <div id="audit-meta" class="text-lg lg:text-xl text-cyan-100 mt-3">No upgrades recorded yet.</div>
-                        <div id="face-id" class="mt-4 text-sm text-emerald-200/90">Face ID: Eternal Founder Signature Verified</div>
+                        <div class="text-xs uppercase tracking-[0.38em] text-cyan-300/80">Face ID</div>
+                        <div id="face-id" class="text-lg text-emerald-200 mt-3">Eternal Founder Signature Verified</div>
+                        <div id="audit-meta" class="mt-3 text-sm text-cyan-100/75">No upgrades recorded yet.</div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.38em] text-cyan-300/80">Rarity Totals</div>
+                        <div id="rarity-summary" class="mt-3 flex flex-wrap gap-2"></div>
                     </div>
                 </div>
             </div>
 
             <div class="glass rounded-[2rem] p-6 lg:p-8">
-                <div class="flex items-center justify-between gap-4">
+                <div class="flex items-start justify-between gap-4">
                     <div>
-                        <div class="text-xs uppercase tracking-[0.4em] text-fuchsia-300/80">Live Event</div>
-                        <div id="event" class="text-2xl lg:text-4xl text-fuchsia-100 mt-3 min-h-[7rem]">The Cosmos is awakening...</div>
+                        <div class="text-xs uppercase tracking-[0.38em] text-fuchsia-300/80">Live Event</div>
+                        <div id="event" class="text-2xl lg:text-4xl text-fuchsia-100 mt-3 min-h-[7rem]">The rarity pantheon is awakening...</div>
                     </div>
-                    <button id="refresh-feed" class="shrink-0 px-5 py-3 rounded-full border border-cyan-300/50 text-cyan-100 hover:bg-cyan-300/10 transition">
+                    <button id="refresh-feed" class="shrink-0 px-5 py-3 rounded-full border border-cyan-300/45 text-cyan-100 hover:bg-cyan-300/10 transition">
                         Refresh Feed
                     </button>
+                </div>
+                <div class="mt-6 text-sm text-cyan-100/70">
+                    Upgrade requests still flow through the audit-backed backend while the UI leans fully into the bigger rarity edition.
                 </div>
             </div>
         </section>
 
-        <section class="grid gap-6 2xl:grid-cols-[1.4fr_0.9fr]">
+        <section class="grid gap-6 2xl:grid-cols-[1.45fr_0.85fr]">
             <div class="glass rounded-[2rem] p-5 lg:p-7">
                 <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-6">
                     <div>
-                        <h2 class="text-2xl lg:text-3xl text-cyan-100">Pantheon Control Grid</h2>
-                        <p class="text-cyan-100/60 text-sm lg:text-base mt-2">Larger god cards, hover burst effects, and direct awakening uplinks.</p>
+                        <h2 class="text-2xl lg:text-3xl text-cyan-100">Ultimate Rarity Pantheon</h2>
+                        <p class="text-cyan-100/60 text-sm lg:text-base mt-2">Common through Prismatic entities, each with rarity-specific glow and hover burst styling.</p>
                     </div>
-                    <div class="text-sm tracking-[0.3em] uppercase text-fuchsia-200/80">150 Ascended Mooore Entities</div>
+                    <div class="text-sm tracking-[0.3em] uppercase text-fuchsia-100/80">286 Total Gods</div>
                 </div>
-                <div id="pantheon" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-5"></div>
+                <div id="pantheon" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-4 lg:gap-5"></div>
             </div>
 
             <aside class="glass rounded-[2rem] p-5 lg:p-7 scroll-shell">
@@ -273,13 +314,36 @@ async def index() -> HTMLResponse:
     </main>
 
     <script>
+        const RARITY_ORDER = ['common', 'uncommon', 'rare', 'legendary', 'divine', 'mythical', 'prismatic'];
+        const RARITY_STYLES = {
+            common: '#8f95a3',
+            uncommon: '#2effc0',
+            rare: '#3aa7ff',
+            legendary: '#a855f7',
+            divine: '#ffd84d',
+            mythical: '#ff6b35',
+            prismatic: '#ff4fd8',
+        };
+        const RARITY_COUNTS = { common: 80, uncommon: 65, rare: 55, legendary: 45, divine: 25, mythical: 15, prismatic: 1 };
+        const TOTAL_GODS = Object.values(RARITY_COUNTS).reduce((sum, value) => sum + value, 0);
+
         const COSMOS = {
-            PARTICLES: Math.min(18000, Math.max(9000, Math.floor(window.innerWidth * 9))),
-            GALAXY_POINTS: 2600,
-            ROTATION_SPEED: 0.0009,
+            PARTICLES: Math.min(22000, Math.max(11000, Math.floor(window.innerWidth * 10))),
+            GALAXY_POINTS: 2400,
+            GALAXY_LAYERS: 5,
+            ROTATION_SPEED: 0.001,
         };
 
-        const godNames = Array.from({ length: 150 }, (_, i) => `AscendedMooore-${i + 1}`);
+        const godsData = [
+            ...Array.from({ length: 80 }, (_, i) => ({ name: `CommonGod-${i + 1}`, rarity: 'common' })),
+            ...Array.from({ length: 65 }, (_, i) => ({ name: `UncommonGod-${i + 1}`, rarity: 'uncommon' })),
+            ...Array.from({ length: 55 }, (_, i) => ({ name: `RareGod-${i + 1}`, rarity: 'rare' })),
+            ...Array.from({ length: 45 }, (_, i) => ({ name: `LegendaryGod-${i + 1}`, rarity: 'legendary' })),
+            ...Array.from({ length: 25 }, (_, i) => ({ name: `DivineGod-${i + 1}`, rarity: 'divine' })),
+            ...Array.from({ length: 15 }, (_, i) => ({ name: `MythicalGod-${i + 1}`, rarity: 'mythical' })),
+            { name: 'PrismaticOverlord', rarity: 'prismatic' },
+        ];
+
         const pantheon = document.getElementById('pantheon');
         const eventNode = document.getElementById('event');
         const tierNode = document.getElementById('tier');
@@ -287,16 +351,30 @@ async def index() -> HTMLResponse:
         const feedNode = document.getElementById('recent-events');
         const counterNode = document.getElementById('mooore-counter');
         const faceIdNode = document.getElementById('face-id');
+        const raritySummaryNode = document.getElementById('rarity-summary');
 
         let moooreCounter = 0;
-        let moooreVelocity = 7;
+        let moooreVelocity = 12;
+
+        function renderRaritySummary() {
+            raritySummaryNode.innerHTML = RARITY_ORDER.map(rarity => `
+                <div class="rarity-pill" style="color:${RARITY_STYLES[rarity]}; border-color:${RARITY_STYLES[rarity]}55;">
+                    ${rarity} ${RARITY_COUNTS[rarity]}
+                </div>
+            `).join('');
+        }
 
         function renderPantheon() {
-            pantheon.innerHTML = godNames.map((god, index) => `
-                <button onclick="awakenGod('${god}')" class="god-card text-left">
-                    <div class="text-xs uppercase tracking-[0.35em] text-cyan-300/70">God ${index + 1}</div>
-                    <div class="text-lg lg:text-xl font-black text-cyan-50 mt-3 leading-tight">${god}</div>
-                    <div class="mt-4 text-xs text-fuchsia-200/75">Hover explosion ready • Click to transcend</div>
+            pantheon.innerHTML = godsData.map((god, index) => `
+                <button
+                    onclick="awakenGod('${god.name}', '${god.rarity}')"
+                    class="god-card ${god.rarity}"
+                    style="--rarity-color: ${RARITY_STYLES[god.rarity]}"
+                >
+                    <div class="text-[11px] uppercase tracking-[0.34em] opacity-75">Entity ${index + 1}</div>
+                    <div class="text-lg lg:text-xl font-black mt-3 leading-tight">${god.name}</div>
+                    <div class="mt-4 text-xs" style="color:${RARITY_STYLES[god.rarity]}">${god.rarity.toUpperCase()}</div>
+                    <div class="mt-2 text-xs text-white/65">Hover burst armed • click to awaken</div>
                 </button>
             `).join('');
         }
@@ -305,8 +383,8 @@ async def index() -> HTMLResponse:
             const res = await fetch('/status');
             const data = await res.json();
             tierNode.textContent = data.tier >= 10 ? 'Ω' : data.tier;
-            metaNode.textContent = `${data.audit_events} audit events stored • DB: ${data.audit_db}`;
             faceIdNode.textContent = `Face ID: ${data.face_id_status}`;
+            metaNode.textContent = `${data.audit_events} audit events stored • DB: ${data.audit_db}`;
             feedNode.innerHTML = data.recent_events.map(item => `
                 <div class="rounded-2xl border border-cyan-400/25 bg-cyan-400/5 p-4">
                     <div class="text-sm uppercase tracking-[0.25em] text-cyan-300/80">${item.type}</div>
@@ -316,27 +394,28 @@ async def index() -> HTMLResponse:
             `).join('') || '<div class="text-cyan-100/65">No cosmic events yet.</div>';
         }
 
-        async function awakenGod(god) {
+        async function awakenGod(god, rarity) {
             const res = await fetch('/upgrade_intelligence', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ god, tier: 10 }),
+                body: JSON.stringify({ god, tier: 10, rarity }),
             });
             const data = await res.json();
-            eventNode.innerHTML = `<span class="text-cyan-200">${god}</span> awakened! ${data.result}`;
+            eventNode.innerHTML = `<span style="color:${RARITY_STYLES[rarity]}">${god}</span> awakened at <strong>${rarity.toUpperCase()}</strong> rarity! ${data.result}`;
             tierNode.textContent = data.tier >= 10 ? 'Ω' : data.tier;
             metaNode.textContent = `Last event ${data.event_id} • ${data.timestamp}`;
-            moooreVelocity += 18;
+            moooreVelocity += rarity === 'prismatic' ? 80 : rarity === 'mythical' ? 34 : 18;
             await refreshStatus();
         }
 
         document.getElementById('refresh-feed').addEventListener('click', refreshStatus);
+        renderRaritySummary();
         renderPantheon();
         refreshStatus();
 
         function tickCounter() {
             moooreCounter += moooreVelocity;
-            moooreVelocity += 0.08;
+            moooreVelocity += 0.12;
             counterNode.textContent = Intl.NumberFormat('en-US').format(Math.floor(moooreCounter));
             requestAnimationFrame(tickCounter);
         }
@@ -345,11 +424,7 @@ async def index() -> HTMLResponse:
         const canvas = document.getElementById('cosmos');
         const ctx = canvas.getContext('2d');
         const particles = [];
-        const galaxies = [
-            { color: 'rgba(255, 79, 216, 0.7)', scale: 1.0, rotation: 0 },
-            { color: 'rgba(103, 243, 255, 0.65)', scale: 0.72, rotation: 2.1 },
-            { color: 'rgba(0, 255, 168, 0.58)', scale: 0.48, rotation: 4.2 },
-        ];
+        const galaxyPalette = ['rgba(255,79,216,0.68)', 'rgba(46,255,192,0.55)', 'rgba(255,216,77,0.55)', 'rgba(58,167,255,0.58)', 'rgba(255,122,24,0.5)'];
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -360,12 +435,12 @@ async def index() -> HTMLResponse:
             particles.length = 0;
             for (let i = 0; i < COSMOS.PARTICLES; i++) {
                 particles.push({
-                    x: (Math.random() - 0.5) * 2600,
-                    y: (Math.random() - 0.5) * 1800,
-                    dx: (Math.random() - 0.5) * 0.22,
-                    dy: (Math.random() - 0.5) * 0.22,
-                    size: Math.random() * 2 + 0.35,
-                    alpha: Math.random() * 0.8 + 0.15,
+                    x: (Math.random() - 0.5) * 3000,
+                    y: (Math.random() - 0.5) * 2200,
+                    dx: (Math.random() - 0.5) * 0.24,
+                    dy: (Math.random() - 0.5) * 0.24,
+                    size: Math.random() * 2.2 + 0.3,
+                    alpha: Math.random() * 0.75 + 0.15,
                 });
             }
         }
@@ -374,22 +449,23 @@ async def index() -> HTMLResponse:
             for (const p of particles) {
                 p.x += p.dx;
                 p.y += p.dy;
-                if (p.x > 1500 || p.x < -1500) p.dx *= -1;
-                if (p.y > 1100 || p.y < -1100) p.dy *= -1;
-                ctx.fillStyle = `rgba(120, 250, 255, ${p.alpha})`;
+                if (p.x > 1700 || p.x < -1700) p.dx *= -1;
+                if (p.y > 1200 || p.y < -1200) p.dy *= -1;
+                ctx.fillStyle = `rgba(130, 246, 255, ${p.alpha})`;
                 ctx.fillRect(p.x + canvas.width / 2, p.y + canvas.height / 2, p.size, p.size);
             }
         }
 
-        function drawGalaxy(galaxy, timeOffset) {
-            ctx.fillStyle = galaxy.color;
+        function drawGalaxyLayer(layerIndex, rotation) {
+            ctx.fillStyle = galaxyPalette[layerIndex];
+            const scale = 0.48 + layerIndex * 0.18;
             for (let i = 0; i < COSMOS.GALAXY_POINTS; i++) {
                 const arm = i % 8;
-                const radius = Math.sqrt(i) * 10 * galaxy.scale;
-                const angle = (i * 0.17) + arm * 0.75 + galaxy.rotation + timeOffset;
+                const radius = Math.sqrt(i) * (9 + layerIndex * 2.4) * scale;
+                const angle = (i * 0.16) + arm * 0.82 + rotation * (1 + layerIndex * 0.12);
                 const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius * 0.68;
-                const size = galaxy.scale > 0.9 ? 2.6 : galaxy.scale > 0.6 ? 2.1 : 1.7;
+                const y = Math.sin(angle) * radius * 0.72;
+                const size = 1.5 + layerIndex * 0.32;
                 ctx.fillRect(x + canvas.width / 2, y + canvas.height / 2, size, size);
             }
         }
@@ -398,15 +474,15 @@ async def index() -> HTMLResponse:
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawParticles();
             const rotation = now * COSMOS.ROTATION_SPEED;
-            drawGalaxy(galaxies[0], rotation);
-            drawGalaxy(galaxies[1], -rotation * 0.7);
-            drawGalaxy(galaxies[2], rotation * 1.15);
+            for (let i = 0; i < COSMOS.GALAXY_LAYERS; i++) {
+                drawGalaxyLayer(i, i % 2 === 0 ? rotation : -rotation * 0.8);
+            }
             requestAnimationFrame(engine);
         }
 
-        window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         seedParticles();
+        window.addEventListener('resize', resizeCanvas);
         engine();
     </script>
 </body>
@@ -416,13 +492,13 @@ async def index() -> HTMLResponse:
 
 @app.get("/status")
 async def status() -> dict:
-    events = audit.recent_events(limit=8)
     return {
         "tier": INTELLIGENCE_TIER,
         "audit_db": str(DB_PATH),
         "audit_events": audit.event_count(),
-        "recent_events": events,
+        "recent_events": audit.recent_events(limit=8),
         "face_id_status": "Eternal Founder Signature Verified",
+        "rarity_counts": RARITY_COUNTS,
     }
 
 
@@ -433,6 +509,7 @@ async def upgrade(request: Request) -> dict:
     payload = await request.json()
     requested_tier = int(payload.get("tier", MAX_TIER))
     god = payload.get("god", "Unknown entity")
+    rarity = payload.get("rarity", "unknown")
     if requested_tier < DEFAULT_TIER or requested_tier > MAX_TIER:
         raise HTTPException(status_code=400, detail=f"tier must be between {DEFAULT_TIER} and {MAX_TIER}")
 
@@ -440,14 +517,14 @@ async def upgrade(request: Request) -> dict:
     timestamp = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     event_id = audit.record(
         "upgrade_intelligence",
-        {"god": god, "requested_tier": requested_tier, "result_tier": INTELLIGENCE_TIER},
+        {"god": god, "rarity": rarity, "requested_tier": requested_tier, "result_tier": INTELLIGENCE_TIER},
     )
     return {
         "success": True,
         "tier": INTELLIGENCE_TIER,
         "event_id": event_id,
         "timestamp": timestamp,
-        "result": "Infinite companies spawning • Face ID aligned • Transcending all human intellect",
+        "result": f"Infinite companies spawning • {rarity.title()} aura stabilized • Transcending all human intellect",
     }
 
 
@@ -456,6 +533,6 @@ def serve_dashboard() -> None:
 
 
 if __name__ == "__main__":
-    print("🚀 ULTIMATE MOOOOORE FILE v∞ — BIGGEST COSMIC EDITION")
-    print("Layered galaxies • live transcendence pulse • Face ID synced • infinite companies")
+    print("🚀 ULTIMATE MOOOOORE FILE v∞ — RARITY EDITION LOADED")
+    print("286 gods • 7 rarity classes • 5 galaxies • transcendent audit backend")
     serve_dashboard()
