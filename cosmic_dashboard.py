@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import datetime
-import hashlib
 import json
 import sqlite3
+import uuid
 from contextlib import closing
 from pathlib import Path
 
@@ -30,7 +30,7 @@ class AuditLedger:
 
     def record(self, typ: str, payload: dict) -> str:
         ts = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
-        eid = hashlib.sha256(f"{ts}:{typ}:{json.dumps(payload, sort_keys=True)}".encode()).hexdigest()[:40]
+        eid = uuid.uuid4().hex
         self.conn.execute(
             "INSERT INTO events (id, ts, type, payload) VALUES (?,?,?,?)",
             (eid, ts, typ, json.dumps(payload, sort_keys=True)),
@@ -142,6 +142,15 @@ async def index() -> HTMLResponse:
             </button>
         `).join('');
 
+        function escapeHtml(value) {
+            return value
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll("\"", '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
         async function refreshStatus() {
             const res = await fetch('/status');
             const data = await res.json();
@@ -149,9 +158,9 @@ async def index() -> HTMLResponse:
             metaNode.textContent = `${data.audit_events} audit events stored • DB: ${data.audit_db}`;
             feedNode.innerHTML = data.recent_events.map(item => `
                 <div class="border border-cyan-500/40 rounded-2xl p-4 bg-cyan-500/5">
-                    <div class="text-cyan-300 font-bold">${item.type}</div>
-                    <div class="text-cyan-100/70">${item.ts}</div>
-                    <div class="mt-2 text-fuchsia-200">${JSON.stringify(item.payload)}</div>
+                    <div class="text-cyan-300 font-bold">${escapeHtml(String(item.type))}</div>
+                    <div class="text-cyan-100/70">${escapeHtml(String(item.ts))}</div>
+                    <div class="mt-2 text-fuchsia-200">${escapeHtml(JSON.stringify(item.payload))}</div>
                 </div>
             `).join('') || '<div class="text-cyan-100/70">No cosmic events yet.</div>';
         }
@@ -163,7 +172,7 @@ async def index() -> HTMLResponse:
                 body: JSON.stringify({ god, tier: 10 })
             });
             const data = await res.json();
-            eventNode.innerHTML = `${god} awakened! ${data.result}`;
+            eventNode.textContent = `${god} awakened! ${data.result}`;
             tierNode.textContent = data.tier >= 10 ? 'Ω' : data.tier;
             metaNode.textContent = `Last event ${data.event_id} • ${data.timestamp}`;
             await refreshStatus();
@@ -231,7 +240,7 @@ async def upgrade(request: Request) -> dict:
 
     payload = await request.json()
     requested_tier = int(payload.get("tier", MAX_TIER))
-    god = payload.get("god", "Unknown entity")
+    god = str(payload.get("god", "Unknown entity"))
     if requested_tier < DEFAULT_TIER or requested_tier > MAX_TIER:
         raise HTTPException(status_code=400, detail=f"tier must be between {DEFAULT_TIER} and {MAX_TIER}")
 
