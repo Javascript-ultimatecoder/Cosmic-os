@@ -18,6 +18,15 @@ DB_PATH = Path("omega_ultra_audit.db")
 DEFAULT_TIER = 0
 MAX_TIER = 10
 INTELLIGENCE_TIER = DEFAULT_TIER
+RARITY_COUNTS = {
+    "common": 80,
+    "uncommon": 70,
+    "rare": 60,
+    "legendary": 50,
+    "divine": 30,
+    "mythical": 20,
+    "prismatic": 10,
+}
 
 
 class AuditLedger:
@@ -56,7 +65,7 @@ class AuditLedger:
 
 
 audit = AuditLedger()
-app = FastAPI(title="Cosmic Operating System", version="1.1.0")
+app = FastAPI(title="Cosmic Operating System", version="1.2.0")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -70,45 +79,71 @@ async def index() -> HTMLResponse:
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+        :root {
+            color-scheme: dark;
+        }
         body {
-            background: radial-gradient(circle at center, #0a001f, #000);
+            background: radial-gradient(circle at center, #0a001f 0%, #05000f 35%, #000 100%);
             font-family: 'Orbitron', monospace;
             color: #00ffff;
             margin: 0;
             overflow-x: hidden;
             min-height: 100vh;
         }
-        .neon { text-shadow: 0 0 60px #00ffff, 0 0 120px #ff00ff, 0 0 180px #ff00ff; }
-        canvas { position: fixed; top: 0; left: 0; z-index: -1; }
-        .god {
-            transition: all 0.6s cubic-bezier(0.23,1,0.32,1);
-            background: rgba(10,0,30,0.95);
-            border: 3px solid;
-            box-shadow: 0 0 25px currentColor;
-            font-size: 0.75rem;
-            padding: 10px 8px;
-            margin: 3px;
-        }
-        .god:hover {
-            transform: scale(1.18) rotate(4deg);
-            box-shadow: 0 0 120px currentColor;
-        }
-        .common { border-color: #888888; color: #b9c2cf; }
-        .uncommon { border-color: #00ff88; color: #8dffd0; }
-        .rare { border-color: #0088ff; color: #88d0ff; }
-        .legendary { border-color: #aa00ff; color: #e1a6ff; }
-        .divine { border-color: #ffdd00; color: #fff2a6; }
-        .mythical { border-color: #ff2200; color: #ffb2a6; }
-        .prismatic { border-color: #ff00ff; color: #ffd8ff; animation: rainbow 2s infinite; }
+        .neon { text-shadow: 0 0 42px #00ffff, 0 0 96px #ff00ff, 0 0 168px #ff00ff; }
+        canvas { position: fixed; inset: 0; z-index: -1; }
         .glass-panel {
-            background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(12px);
-            box-shadow: 0 0 40px rgba(132, 0, 255, 0.18);
+            background: linear-gradient(180deg, rgba(7, 7, 26, 0.82), rgba(0, 0, 0, 0.66));
+            backdrop-filter: blur(18px);
+            box-shadow: 0 0 40px rgba(132, 0, 255, 0.16);
+        }
+        .god {
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            background: rgba(10, 0, 30, 0.95);
+            border: 2px solid;
+            box-shadow: 0 0 18px currentColor;
+            font-size: 0.78rem;
+        }
+        .god:hover,
+        .god:focus-visible {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 0 38px currentColor;
+            outline: none;
+        }
+        .god.active {
+            transform: scale(1.04);
+            box-shadow: 0 0 44px currentColor;
+        }
+        .common { border-color: #888888; color: #c2c9d6; }
+        .uncommon { border-color: #00ff88; color: #96ffd8; }
+        .rare { border-color: #0088ff; color: #8fd1ff; }
+        .legendary { border-color: #aa00ff; color: #dda4ff; }
+        .divine { border-color: #ffdd00; color: #fff0a3; }
+        .mythical { border-color: #ff2200; color: #ffb3a5; }
+        .prismatic { border-color: #ff00ff; color: #ffd7ff; animation: rainbow 2s infinite linear; }
+        .metric-label {
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         @keyframes rainbow {
             0% { border-color: #ff00ff; }
             50% { border-color: #00ffff; }
             100% { border-color: #ffff00; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .god, .prismatic { transition: none; animation: none; }
         }
     </style>
 </head>
@@ -116,41 +151,94 @@ async def index() -> HTMLResponse:
     <canvas id="cosmos"></canvas>
 
     <div class="max-w-7xl mx-auto p-6 relative z-10">
-        <h1 class="text-4xl md:text-7xl xl:text-8xl font-black text-center neon tracking-[0.3em] md:tracking-[0.55em] xl:tracking-[0.8em] mb-6">Ω COSMIC OPERATING SYSTEM</h1>
-        <p class="text-center text-lg md:text-3xl text-purple-400">320 Gods • 7 Rarity Classes • Infinite Companies</p>
+        <header class="text-center py-4 md:py-8">
+            <h1 class="text-4xl md:text-7xl xl:text-8xl font-black neon tracking-[0.24em] md:tracking-[0.45em] xl:tracking-[0.68em] mb-5">Ω COSMIC OPERATING SYSTEM</h1>
+            <p class="text-lg md:text-3xl text-purple-300">320 Gods • 7 Rarity Classes • Infinite Companies</p>
+            <p class="text-cyan-200/75 mt-3 max-w-4xl mx-auto">A live pantheon dashboard for Ω-tier awakenings, audit-backed telemetry, and continuously updated cosmic status.</p>
+        </header>
 
-        <div class="grid gap-6 lg:grid-cols-[1.4fr_0.9fr] my-10">
-            <section class="glass-panel border border-fuchsia-500 rounded-3xl p-6 md:p-8">
+        <section class="grid gap-6 xl:grid-cols-[1.25fr_0.95fr] my-10">
+            <div class="glass-panel border border-fuchsia-500 rounded-3xl p-6 md:p-8">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                     <div>
-                        <div class="text-sm uppercase tracking-[0.45em] text-cyan-300">Cosmic Event</div>
-                        <div id="event" class="text-2xl md:text-4xl text-purple-200 min-h-[160px] mt-4">The Cosmos is awakening...</div>
+                        <div class="metric-label text-cyan-300">Cosmic Event</div>
+                        <div id="event" class="text-2xl md:text-4xl text-purple-100 min-h-[144px] mt-4">The Cosmos is awakening...</div>
+                        <div id="audit-meta" class="text-sm md:text-base text-cyan-200/80 mt-8">No upgrades recorded yet.</div>
                     </div>
-                    <div class="text-center md:text-right min-w-[10rem]">
-                        <div class="text-sm uppercase tracking-[0.45em] text-yellow-300">Tier State</div>
-                        <div id="tier" class="text-7xl md:text-8xl text-pink-400 mt-4 font-black">Tier 0</div>
+                    <div class="grid gap-4 min-w-[14rem]">
+                        <div class="rounded-3xl border border-yellow-500/50 bg-black/30 p-5 text-center">
+                            <div class="metric-label text-yellow-300">Tier State</div>
+                            <div id="tier" class="text-7xl md:text-8xl text-pink-400 mt-4 font-black">Tier 0</div>
+                        </div>
+                        <div class="rounded-3xl border border-cyan-500/40 bg-black/30 p-5 text-left">
+                            <div class="metric-label text-cyan-300">Pantheon Metrics</div>
+                            <dl class="grid grid-cols-2 gap-3 mt-4 text-sm text-cyan-100/85">
+                                <div>
+                                    <dt class="text-cyan-300/70">Entities</dt>
+                                    <dd id="entity-count" class="text-xl text-cyan-100">320</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-cyan-300/70">Visible</dt>
+                                    <dd id="visible-count" class="text-xl text-cyan-100">320</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-cyan-300/70">Audit Events</dt>
+                                    <dd id="event-count" class="text-xl text-cyan-100">0</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-cyan-300/70">Last Awakening</dt>
+                                    <dd id="last-awakening" class="text-sm text-fuchsia-200">Pending</dd>
+                                </div>
+                            </dl>
+                        </div>
                     </div>
                 </div>
-                <div id="audit-meta" class="text-sm md:text-base text-cyan-200/80 mt-8">No upgrades recorded yet.</div>
-            </section>
+            </div>
 
-            <section class="glass-panel border border-cyan-500 rounded-3xl p-6 md:p-8">
-                <div class="text-sm uppercase tracking-[0.45em] text-cyan-300">Cosmic Audit Feed</div>
+            <aside class="glass-panel border border-cyan-500 rounded-3xl p-6 md:p-8">
+                <div class="metric-label text-cyan-300">Cosmic Audit Feed</div>
                 <div id="recent-events" class="grid gap-3 text-sm text-cyan-100/90 mt-5"></div>
                 <button id="refresh-feed" class="mt-6 w-full px-4 py-3 rounded-full border border-cyan-300 text-cyan-200 hover:bg-cyan-400/10">Refresh Audit Feed</button>
-            </section>
-        </div>
+            </aside>
+        </section>
 
         <section class="glass-panel border border-purple-500 rounded-3xl p-6 md:p-8">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <h2 class="text-2xl md:text-3xl text-fuchsia-300">Pantheon Control Grid</h2>
-                <div class="text-sm md:text-base text-cyan-200/80">Select an entity to force an Ω-tier awakening and append it to the audit ledger.</div>
+            <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 mb-6">
+                <div>
+                    <h2 class="text-2xl md:text-3xl text-fuchsia-300">Pantheon Control Grid</h2>
+                    <p class="text-sm md:text-base text-cyan-200/80 mt-2">Filter the pantheon, then trigger a force-awakening to append a new audit event.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 xl:min-w-[30rem]">
+                    <label class="flex-1">
+                        <span class="sr-only">Search gods</span>
+                        <input id="god-search" type="search" placeholder="Search pantheon by entity name" class="w-full rounded-full border border-cyan-400/40 bg-black/40 px-4 py-3 text-cyan-100 placeholder:text-cyan-300/45 focus:border-fuchsia-400 focus:outline-none" />
+                    </label>
+                    <label>
+                        <span class="sr-only">Filter by rarity</span>
+                        <select id="rarity-filter" class="w-full rounded-full border border-cyan-400/40 bg-black/40 px-4 py-3 text-cyan-100 focus:border-fuchsia-400 focus:outline-none">
+                            <option value="all">All rarities</option>
+                            <option value="common">Common</option>
+                            <option value="uncommon">Uncommon</option>
+                            <option value="rare">Rare</option>
+                            <option value="legendary">Legendary</option>
+                            <option value="divine">Divine</option>
+                            <option value="mythical">Mythical</option>
+                            <option value="prismatic">Prismatic</option>
+                        </select>
+                    </label>
+                </div>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 xl:grid-cols-8 gap-3 my-4" id="pantheon"></div>
+            <div id="rarity-summary" class="flex flex-wrap gap-2 text-xs text-cyan-100/85 mb-5"></div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8 gap-3" id="pantheon"></div>
         </section>
     </div>
 
     <script>
+        const cosmicData = {
+            rarityCounts: {"common": 80, "uncommon": 70, "rare": 60, "legendary": 50, "divine": 30, "mythical": 20, "prismatic": 10},
+        };
+
+        const totalEntities = Object.values(cosmicData.rarityCounts).reduce((sum, count) => sum + count, 0);
         const canvas = document.getElementById('cosmos');
         const ctx = canvas.getContext('2d');
         const eventNode = document.getElementById('event');
@@ -158,68 +246,106 @@ async def index() -> HTMLResponse:
         const metaNode = document.getElementById('audit-meta');
         const feedNode = document.getElementById('recent-events');
         const pantheonNode = document.getElementById('pantheon');
+        const searchNode = document.getElementById('god-search');
+        const rarityNode = document.getElementById('rarity-filter');
+        const visibleCountNode = document.getElementById('visible-count');
+        const eventCountNode = document.getElementById('event-count');
+        const lastAwakeningNode = document.getElementById('last-awakening');
+        const raritySummaryNode = document.getElementById('rarity-summary');
+        const entityCountNode = document.getElementById('entity-count');
 
+        entityCountNode.textContent = String(totalEntities);
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        const particleCount = 24000;
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const particleCount = reduceMotion ? 0 : Math.min(12000, Math.max(2400, Math.floor((window.innerWidth * window.innerHeight) / 70)));
         const particles = new Float32Array(particleCount * 3);
         for (let i = 0; i < particles.length; i += 3) {
             particles[i] = (Math.random() - 0.5) * Math.max(window.innerWidth * 1.4, 2200);
-            particles[i + 1] = (Math.random() - 0.5) * Math.max(window.innerHeight * 1.4, 1800);
-            particles[i + 2] = Math.random() * 1.8 + 0.6;
+            particles[i + 1] = (Math.random() - 0.5) * Math.max(window.innerHeight * 1.2, 1600);
+            particles[i + 2] = Math.random() * 1.6 + 0.5;
         }
 
-        const galaxies = [];
-        for (let g = 0; g < 5; g++) {
-            const stars = [];
-            for (let i = 0; i < 1200; i++) {
-                const arm = i % 8;
-                const angle = i * 0.07 + arm * 2.2 + g * 1.1;
-                const radius = Math.sqrt(i) * (7 + g * 3);
-                stars.push({ x: Math.cos(angle) * radius, y: Math.sin(angle) * radius });
-            }
-            galaxies.push(stars);
+        const galaxies = reduceMotion ? [] : Array.from({ length: 5 }, (_, galaxyIndex) => {
+            return Array.from({ length: 600 }, (_, starIndex) => {
+                const arm = starIndex % 7;
+                const angle = starIndex * 0.08 + arm * 2.14 + galaxyIndex * 0.85;
+                const radius = Math.sqrt(starIndex) * (6 + galaxyIndex * 3);
+                return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+            });
+        });
+
+        const godsData = Object.entries(cosmicData.rarityCounts).flatMap(([rarity, count]) => {
+            const label = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+            return Array.from({ length: count }, (_, index) => ({
+                rarity,
+                name: `${label}God-${index + 1}`,
+            }));
+        });
+
+        raritySummaryNode.innerHTML = Object.entries(cosmicData.rarityCounts).map(([rarity, count]) => `
+            <span class="px-3 py-2 rounded-full border border-cyan-500/30 bg-black/30 ${rarity}">${rarity.toUpperCase()} · ${count}</span>
+        `).join('');
+
+        let visibleGods = godsData;
+        let activeGod = null;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
 
         function engine() {
+            if (reduceMotion) {
+                return;
+            }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (let i = 0; i < particles.length; i += 3) {
-                particles[i] += Math.sin(i * 0.005) * 0.18;
-                particles[i + 1] += Math.cos(i * 0.005) * 0.15;
+                particles[i] += Math.sin(i * 0.005) * 0.12;
+                particles[i + 1] += Math.cos(i * 0.005) * 0.12;
                 ctx.fillStyle = '#00ffff';
-                ctx.globalAlpha = 0.2 + (particles[i + 2] / 4);
+                ctx.globalAlpha = 0.18 + (particles[i + 2] / 4);
                 ctx.fillRect(particles[i] + canvas.width / 2, particles[i + 1] + canvas.height / 2, particles[i + 2], particles[i + 2]);
             }
             const colors = ['#ff00ff', '#00ffaa', '#ffff00', '#00aaff', '#ff8800'];
-            for (let g = 0; g < galaxies.length; g++) {
-                ctx.fillStyle = colors[g];
-                ctx.globalAlpha = 0.55;
-                galaxies[g].forEach((p) => {
-                    ctx.fillRect(p.x * (1 + g * 0.25) + canvas.width / 2, p.y * (1 + g * 0.25) + canvas.height / 2, 2.5, 2.5);
+            galaxies.forEach((galaxy, galaxyIndex) => {
+                ctx.fillStyle = colors[galaxyIndex];
+                ctx.globalAlpha = 0.5;
+                galaxy.forEach((point) => {
+                    ctx.fillRect(point.x * (1 + galaxyIndex * 0.24) + canvas.width / 2, point.y * (1 + galaxyIndex * 0.24) + canvas.height / 2, 2.1, 2.1);
                 });
-            }
+            });
             ctx.globalAlpha = 1;
             requestAnimationFrame(engine);
         }
 
-        const godsData = [
-            ...Array(80).fill(0).map((_, i) => ({ name: `CommonGod-${i + 1}`, rarity: 'common' })),
-            ...Array(70).fill(0).map((_, i) => ({ name: `UncommonGod-${i + 1}`, rarity: 'uncommon' })),
-            ...Array(60).fill(0).map((_, i) => ({ name: `RareGod-${i + 1}`, rarity: 'rare' })),
-            ...Array(50).fill(0).map((_, i) => ({ name: `LegendaryGod-${i + 1}`, rarity: 'legendary' })),
-            ...Array(30).fill(0).map((_, i) => ({ name: `DivineGod-${i + 1}`, rarity: 'divine' })),
-            ...Array(20).fill(0).map((_, i) => ({ name: `MythicalGod-${i + 1}`, rarity: 'mythical' })),
-            ...Array(10).fill(0).map((_, i) => ({ name: `PrismaticGod-${i + 1}`, rarity: 'prismatic' }))
-        ];
+        function renderPantheon() {
+            visibleCountNode.textContent = String(visibleGods.length);
+            pantheonNode.innerHTML = visibleGods.map((god) => `
+                <button class="god rounded-3xl text-center cursor-pointer font-bold p-3 ${god.rarity} ${activeGod === god.name ? 'active' : ''}" data-god="${god.name}">
+                    <span class="block">${god.name}</span>
+                    <span class="text-[0.68rem] opacity-70 mt-1 block">${god.rarity.toUpperCase()}</span>
+                </button>
+            `).join('') || '<div class="col-span-full text-center text-cyan-200/70 py-10">No gods match the current filter.</div>';
+        }
 
-        pantheonNode.innerHTML = godsData.map((god) => `
-            <button onclick="awakenGod('${god.name}')" class="god rounded-3xl text-center cursor-pointer text-sm font-bold ${god.rarity}">
-                ${god.name}<br><span class="text-xs opacity-70">${god.rarity.toUpperCase()}</span>
-            </button>
-        `).join('');
+        function applyFilters() {
+            const query = searchNode.value.trim().toLowerCase();
+            const rarity = rarityNode.value;
+            visibleGods = godsData.filter((god) => {
+                const matchesQuery = !query || god.name.toLowerCase().includes(query);
+                const matchesRarity = rarity === 'all' || god.rarity === rarity;
+                return matchesQuery && matchesRarity;
+            });
+            renderPantheon();
+        }
 
         function renderEvents(events) {
+            eventCountNode.textContent = String(events.length);
+            if (events[0]?.payload?.god) {
+                lastAwakeningNode.textContent = events[0].payload.god;
+            }
             feedNode.innerHTML = events.map((item) => `
                 <div class="border border-cyan-500/40 rounded-2xl p-4 bg-cyan-500/5">
                     <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -232,32 +358,44 @@ async def index() -> HTMLResponse:
         }
 
         async function refreshStatus() {
-            const res = await fetch('/status');
-            const data = await res.json();
+            const response = await fetch('/status');
+            const data = await response.json();
             tierNode.textContent = data.tier >= 10 ? 'Ω' : `Tier ${data.tier}`;
             metaNode.textContent = `${data.audit_events} audit events stored • DB: ${data.audit_db}`;
+            eventCountNode.textContent = String(data.audit_events);
             renderEvents(data.recent_events);
         }
 
         async function awakenGod(god) {
-            const res = await fetch('/upgrade_intelligence', {
+            activeGod = god;
+            renderPantheon();
+            const response = await fetch('/upgrade_intelligence', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ god, tier: 10 })
+                body: JSON.stringify({ god, tier: 10 }),
             });
-            const data = await res.json();
+            const data = await response.json();
             eventNode.innerHTML = `${god} awakened! ${data.result || 'Transcending all human intellect...'}`;
             tierNode.textContent = data.tier >= 10 ? 'Ω' : `Tier ${data.tier}`;
             metaNode.textContent = `Last event ${data.event_id} • ${data.timestamp}`;
+            lastAwakeningNode.textContent = god;
             await refreshStatus();
         }
 
-        document.getElementById('refresh-feed').addEventListener('click', refreshStatus);
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        pantheonNode.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-god]');
+            if (!button) {
+                return;
+            }
+            awakenGod(button.dataset.god);
         });
 
+        searchNode.addEventListener('input', applyFilters);
+        rarityNode.addEventListener('change', applyFilters);
+        document.getElementById('refresh-feed').addEventListener('click', refreshStatus);
+        window.addEventListener('resize', resizeCanvas);
+
+        applyFilters();
         refreshStatus();
         engine();
     </script>
@@ -274,6 +412,7 @@ async def status() -> dict:
         "audit_db": str(DB_PATH),
         "audit_events": len(audit.recent_events(limit=1000)),
         "recent_events": events,
+        "pantheon": RARITY_COUNTS,
     }
 
 
