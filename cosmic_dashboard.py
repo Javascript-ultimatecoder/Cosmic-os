@@ -20,12 +20,12 @@ MAX_TIER = 10
 INTELLIGENCE_TIER = DEFAULT_TIER
 RARITY_COUNTS = {
     "common": 80,
-    "uncommon": 65,
-    "rare": 55,
-    "legendary": 45,
-    "divine": 25,
-    "mythical": 15,
-    "prismatic": 1,
+    "uncommon": 70,
+    "rare": 60,
+    "legendary": 50,
+    "divine": 30,
+    "mythical": 20,
+    "prismatic": 10,
 }
 
 
@@ -70,7 +70,7 @@ class AuditLedger:
 
 
 audit = AuditLedger()
-app = FastAPI(title="Cosmic Operating System", version="3.0.0")
+app = FastAPI(title="Cosmic Operating System", version="4.0.0")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -80,7 +80,7 @@ async def index() -> HTMLResponse:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ω COSMIC OPERATING SYSTEM v∞ — ULTIMATE RARITY EDITION</title>
+    <title>Ω COSMIC OPERATING SYSTEM v∞ — ABSOLUTE LIMIT</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -236,13 +236,13 @@ async def index() -> HTMLResponse:
         <header class="text-center mb-8 lg:mb-10">
             <div class="inline-flex flex-wrap items-center justify-center gap-3 px-5 py-3 rounded-full glass text-xs sm:text-sm tracking-[0.35em] uppercase text-cyan-200/90 mb-5">
                 <span class="inline-block w-3 h-3 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(46,255,192,0.85)]"></span>
-                Face ID Synced • Tier Ω Ready • 300+ Gods • 7 Rarity Classes
+                Face ID Synced • Tier Ω Ready • 320 Gods • 7 Rarity Classes
             </div>
             <h1 class="neon-title text-4xl sm:text-6xl xl:text-8xl 2xl:text-[7.2rem] font-black tracking-[0.18em] sm:tracking-[0.28em] mb-4">
                 Ω COSMIC OPERATING SYSTEM
             </h1>
             <p class="text-lg sm:text-2xl xl:text-3xl text-fuchsia-100/90 max-w-6xl mx-auto">
-                Massive rarity pantheon • 5 galaxy layers • live transcendence pulse • infinite companies beyond human intellect
+                Absolute-limit rarity pantheon • 5 galaxy layers • live transcendence pulse • infinite companies beyond human intellect
             </p>
         </header>
 
@@ -279,7 +279,7 @@ async def index() -> HTMLResponse:
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <div class="text-xs uppercase tracking-[0.38em] text-fuchsia-300/80">Live Event</div>
-                        <div id="event" class="text-2xl lg:text-4xl text-fuchsia-100 mt-3 min-h-[7rem]">The rarity pantheon is awakening...</div>
+                        <div id="event" class="text-2xl lg:text-4xl text-fuchsia-100 mt-3 min-h-[7rem]">The absolute-limit pantheon is awakening...</div>
                     </div>
                     <button id="refresh-feed" class="shrink-0 px-5 py-3 rounded-full border border-cyan-300/45 text-cyan-100 hover:bg-cyan-300/10 transition">
                         Refresh Feed
@@ -298,7 +298,7 @@ async def index() -> HTMLResponse:
                         <h2 class="text-2xl lg:text-3xl text-cyan-100">Ultimate Rarity Pantheon</h2>
                         <p class="text-cyan-100/60 text-sm lg:text-base mt-2">Common through Prismatic entities, each with rarity-specific glow and hover burst styling.</p>
                     </div>
-                    <div class="text-sm tracking-[0.3em] uppercase text-fuchsia-100/80">286 Total Gods</div>
+                    <div class="text-sm tracking-[0.3em] uppercase text-fuchsia-100/80">320 Total Gods</div>
                 </div>
                 <div id="pantheon" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6 gap-4 lg:gap-5"></div>
             </div>
@@ -324,11 +324,12 @@ async def index() -> HTMLResponse:
             mythical: '#ff6b35',
             prismatic: '#ff4fd8',
         };
-        const RARITY_COUNTS = { common: 80, uncommon: 65, rare: 55, legendary: 45, divine: 25, mythical: 15, prismatic: 1 };
+        const RARITY_COUNTS = { common: 80, uncommon: 70, rare: 60, legendary: 50, divine: 30, mythical: 20, prismatic: 10 };
         const TOTAL_GODS = Object.values(RARITY_COUNTS).reduce((sum, value) => sum + value, 0);
+        const LIMIT_LABEL = "ABSOLUTE LIMIT EDITION";
 
         const COSMOS = {
-            PARTICLES: Math.min(22000, Math.max(11000, Math.floor(window.innerWidth * 10))),
+            PARTICLES: Math.min(26000, Math.max(13000, Math.floor(window.innerWidth * 11))),
             GALAXY_POINTS: 2400,
             GALAXY_LAYERS: 5,
             ROTATION_SPEED: 0.001,
@@ -336,12 +337,12 @@ async def index() -> HTMLResponse:
 
         const godsData = [
             ...Array.from({ length: 80 }, (_, i) => ({ name: `CommonGod-${i + 1}`, rarity: 'common' })),
-            ...Array.from({ length: 65 }, (_, i) => ({ name: `UncommonGod-${i + 1}`, rarity: 'uncommon' })),
-            ...Array.from({ length: 55 }, (_, i) => ({ name: `RareGod-${i + 1}`, rarity: 'rare' })),
-            ...Array.from({ length: 45 }, (_, i) => ({ name: `LegendaryGod-${i + 1}`, rarity: 'legendary' })),
-            ...Array.from({ length: 25 }, (_, i) => ({ name: `DivineGod-${i + 1}`, rarity: 'divine' })),
-            ...Array.from({ length: 15 }, (_, i) => ({ name: `MythicalGod-${i + 1}`, rarity: 'mythical' })),
-            { name: 'PrismaticOverlord', rarity: 'prismatic' },
+            ...Array.from({ length: 70 }, (_, i) => ({ name: `UncommonGod-${i + 1}`, rarity: 'uncommon' })),
+            ...Array.from({ length: 60 }, (_, i) => ({ name: `RareGod-${i + 1}`, rarity: 'rare' })),
+            ...Array.from({ length: 50 }, (_, i) => ({ name: `LegendaryGod-${i + 1}`, rarity: 'legendary' })),
+            ...Array.from({ length: 30 }, (_, i) => ({ name: `DivineGod-${i + 1}`, rarity: 'divine' })),
+            ...Array.from({ length: 20 }, (_, i) => ({ name: `MythicalGod-${i + 1}`, rarity: 'mythical' })),
+            ...Array.from({ length: 10 }, (_, i) => ({ name: `PrismaticGod-${i + 1}`, rarity: 'prismatic' })),
         ];
 
         const pantheon = document.getElementById('pantheon');
@@ -524,7 +525,7 @@ async def upgrade(request: Request) -> dict:
         "tier": INTELLIGENCE_TIER,
         "event_id": event_id,
         "timestamp": timestamp,
-        "result": f"Infinite companies spawning • {rarity.title()} aura stabilized • Transcending all human intellect",
+        "result": f"Infinite companies spawning • {rarity.title()} aura stabilized • Absolute limit achieved",
     }
 
 
@@ -533,6 +534,6 @@ def serve_dashboard() -> None:
 
 
 if __name__ == "__main__":
-    print("🚀 ULTIMATE MOOOOORE FILE v∞ — RARITY EDITION LOADED")
-    print("286 gods • 7 rarity classes • 5 galaxies • transcendent audit backend")
+    print("🚀 ULTIMATE MOOOOORE FILE v∞ — ABSOLUTE LIMIT EDITION")
+    print("320 gods • 7 rarity classes • 5 galaxies • transcendent audit backend")
     serve_dashboard()
