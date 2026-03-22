@@ -81,16 +81,29 @@ async def index() -> HTMLResponse:
         .neon { text-shadow: 0 0 40px #00ffff, 0 0 80px #ff00ff, 0 0 120px #ff00ff; }
         canvas { position: fixed; inset: 0; z-index: -1; }
         .god {
-            transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
-            background: rgba(10,0,30,0.85);
-            border: 2px solid #00ffff;
-            box-shadow: 0 0 20px rgba(0,255,255,0.45);
+            transition: all 0.5s;
+            background: rgba(10,0,30,0.92);
+            border: 2px solid currentColor;
+            box-shadow: 0 0 20px currentColor;
+            font-size: 0.7rem;
+            padding: 8px 6px;
+            margin: 2px;
+            border-radius: 12px;
+            text-align: center;
         }
         .god:hover {
-            transform: translateY(-8px) scale(1.08);
-            border-color: #ff00ff;
-            box-shadow: 0 0 50px rgba(255,0,255,0.75);
+            transform: scale(1.5) rotate(10deg);
+            box-shadow: 0 0 100px currentColor;
+            position: relative;
+            z-index: 1;
         }
+        .common { color: #67e8f9; }
+        .uncommon { color: #86efac; }
+        .rare { color: #c084fc; }
+        .legendary { color: #f9a8d4; }
+        .divine { color: #facc15; }
+        .mythical { color: #fb923c; }
+        .prismatic { color: #ffffff; }
     </style>
 </head>
 <body>
@@ -98,7 +111,7 @@ async def index() -> HTMLResponse:
 
     <div class="max-w-7xl mx-auto p-6 md:p-8 relative z-10">
         <h1 class="text-4xl md:text-7xl font-black text-center neon tracking-[0.3em] mb-4">Ω COSMIC OPERATING SYSTEM</h1>
-        <p class="text-center text-lg md:text-2xl text-purple-300">150 Gods • Infinite Companies • Transcending All Human Intellect</p>
+        <p class="text-center text-lg md:text-2xl text-purple-300">1,400 Gods • Infinite Companies • Transcending All Human Intellect</p>
 
         <div class="grid gap-6 md:grid-cols-3 my-10">
             <section class="bg-black/60 border border-cyan-400 rounded-3xl p-6">
@@ -118,7 +131,7 @@ async def index() -> HTMLResponse:
                 <h2 class="text-2xl text-fuchsia-300">Pantheon Control Grid</h2>
                 <button id="refresh-feed" class="px-4 py-2 rounded-full border border-cyan-300 text-cyan-200 hover:bg-cyan-400/10">Refresh Audit Feed</button>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-6 gap-4" id="pantheon"></div>
+            <div class="grid grid-cols-3 md:grid-cols-8 xl:grid-cols-12 gap-3 my-12 max-h-[70vh] overflow-y-auto pr-2" id="pantheon"></div>
         </section>
 
         <section class="bg-black/50 border border-cyan-600 rounded-3xl p-6">
@@ -129,16 +142,25 @@ async def index() -> HTMLResponse:
 
     <script>
         const COSMOS = { PARTICLES: 1800 };
-        const godNames = Array.from({length: 150}, (_, i) => `AscendedMooore-${i + 1}`);
+        const godsData = [
+            ...Array(400).fill(0).map((_, i) => ({ name: `CommonGod-${i + 1}`, rarity: 'common' })),
+            ...Array(300).fill(0).map((_, i) => ({ name: `UncommonGod-${i + 1}`, rarity: 'uncommon' })),
+            ...Array(250).fill(0).map((_, i) => ({ name: `RareGod-${i + 1}`, rarity: 'rare' })),
+            ...Array(200).fill(0).map((_, i) => ({ name: `LegendaryGod-${i + 1}`, rarity: 'legendary' })),
+            ...Array(120).fill(0).map((_, i) => ({ name: `DivineGod-${i + 1}`, rarity: 'divine' })),
+            ...Array(80).fill(0).map((_, i) => ({ name: `MythicalGod-${i + 1}`, rarity: 'mythical' })),
+            ...Array(50).fill(0).map((_, i) => ({ name: `PrismaticGod-${i + 1}`, rarity: 'prismatic' })),
+        ];
         const pantheon = document.getElementById('pantheon');
         const eventNode = document.getElementById('event');
         const tierNode = document.getElementById('tier');
         const metaNode = document.getElementById('audit-meta');
         const feedNode = document.getElementById('recent-events');
 
-        pantheon.innerHTML = godNames.map(god => `
-            <button onclick="awakenGod('${god}')" class="god p-4 rounded-2xl text-center cursor-pointer text-sm font-bold">
-                ${god}
+        pantheon.innerHTML = godsData.map(g => `
+            <button onclick="awakenGod(${JSON.stringify(g.name)})" class="god ${g.rarity} cursor-pointer font-bold">
+                <div>${escapeHtml(g.name)}</div>
+                <div class="text-[0.55rem] opacity-70 mt-1">${escapeHtml(g.rarity.toUpperCase())}</div>
             </button>
         `).join('');
 
