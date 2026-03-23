@@ -23,6 +23,17 @@ class CosmicDashboardTests(unittest.TestCase):
         cosmic_dashboard.INTELLIGENCE_TIER = self.original_tier
         self.tempdir.cleanup()
 
+    def test_status_endpoint_has_cors_headers(self) -> None:
+        response = self.client.options(
+            '/status',
+            headers={
+                'Origin': 'http://localhost:5173',
+                'Access-Control-Request-Method': 'GET',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get('access-control-allow-origin'), 'http://localhost:5173')
+
     def test_status_includes_runtime_and_pantheon_metadata(self) -> None:
         response = self.client.get("/status")
         self.assertEqual(response.status_code, 200)

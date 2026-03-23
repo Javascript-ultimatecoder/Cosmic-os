@@ -76,3 +76,16 @@ Regression coverage is available with Python's built-in unittest runner:
 ```bash
 python -m unittest discover -s tests
 ```
+
+
+## React infinite-scroll frontend
+
+A separate Vite/React frontend is available under `transcendence-frontend/` for a virtualized pantheon experience powered by `react-window` and `react-window-infinite-loader`.
+
+```bash
+cd transcendence-frontend
+npm install
+npm run dev
+```
+
+By default it talks to `http://127.0.0.1:8080`, or you can override the backend with `VITE_API_BASE_URL`.
