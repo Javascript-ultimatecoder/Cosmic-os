@@ -54,6 +54,33 @@ class CosmicDashboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("tier must be between", response.json()["detail"])
 
+    def test_performance_evolution_records_audit_event(self) -> None:
+        response = self.client.post('/evolve_performance', json={'god': 'RareGod-3'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertIn('PERFORMANCE', payload['result'])
+
+        status_payload = self.client.get('/status').json()
+        self.assertEqual(status_payload['audit_events'], 1)
+        self.assertEqual(status_payload['recent_events'][0]['type'], 'performance_evolution')
+        self.assertEqual(status_payload['recent_events'][0]['payload']['god'], 'RareGod-3')
+
+    def test_mating_evolution_creates_child_event(self) -> None:
+        response = self.client.post('/mate_gods', json={'god1': 'DivineGod-2', 'god2': 'MythicalGod-4'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['child'], 'ChildOf_DivineGod-2_MythicalGod-4')
+
+        status_payload = self.client.get('/status').json()
+        self.assertEqual(status_payload['audit_events'], 1)
+        self.assertEqual(status_payload['recent_events'][0]['type'], 'mating_evolution')
+        self.assertEqual(
+            status_payload['recent_events'][0]['payload']['child'],
+            'ChildOf_DivineGod-2_MythicalGod-4',
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

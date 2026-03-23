@@ -308,6 +308,7 @@ async def index() -> HTMLResponse:
 
         let visibleGods = godsData;
         let activeGod = null;
+        let selectedForMating = null;
 
         function resizeCanvas() {{
             canvas.width = window.innerWidth;
@@ -341,10 +342,14 @@ async def index() -> HTMLResponse:
         function renderPantheon() {{
             visibleCountNode.textContent = String(visibleGods.length);
             pantheonNode.innerHTML = visibleGods.map((god) => `
-                <button class="god rounded-3xl text-center cursor-pointer font-bold p-3 ${{god.rarity}} ${{activeGod === god.name ? 'active' : ''}}" data-god="${{god.name}}">
+                <div class="god rounded-3xl text-center cursor-pointer font-bold p-3 ${{god.rarity}} ${{activeGod === god.name ? 'active' : ''}}" data-god="${{god.name}}">
                     <span class="block">${{god.name}}</span>
                     <span class="text-[0.68rem] opacity-70 mt-1 block">${{god.rarity.toUpperCase()}}</span>
-                </button>
+                    <div class="mt-3 flex gap-2 justify-center">
+                        <button type="button" data-performance-god="${{god.name}}" class="text-[10px] bg-cyan-600 hover:bg-cyan-500 px-3 py-1 rounded">PERFORMANCE</button>
+                        <button type="button" data-mate-god="${{god.name}}" class="text-[10px] bg-purple-600 hover:bg-purple-500 px-3 py-1 rounded">MATE</button>
+                    </div>
+                </div>
             `).join('') || '<div class="col-span-full text-center text-cyan-200/70 py-10">No gods match the current filter.</div>';
         }}
 
@@ -401,7 +406,65 @@ async def index() -> HTMLResponse:
             await refreshStatus();
         }}
 
+        async function evolvePerformance(god) {{
+            activeGod = god;
+            renderPantheon();
+            const response = await fetch('/evolve_performance', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ god }}),
+            }});
+            const data = await response.json();
+            eventNode.innerHTML = data.result;
+            lastAwakeningNode.textContent = god;
+            await refreshStatus();
+        }}
+
+        async function mateGod(god) {{
+            if (!selectedForMating) {{
+                selectedForMating = god;
+                eventNode.innerHTML = `Selected ${{god}} for mating — click another god to mate`;
+                activeGod = god;
+                renderPantheon();
+                return;
+            }}
+
+            if (selectedForMating === god) {{
+                selectedForMating = null;
+                activeGod = god;
+                renderPantheon();
+                return;
+            }}
+
+            const response = await fetch('/mate_gods', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ god1: selectedForMating, god2: god }}),
+            }});
+            const data = await response.json();
+            eventNode.innerHTML = data.result;
+            activeGod = god;
+            lastAwakeningNode.textContent = data.child || god;
+            selectedForMating = null;
+            renderPantheon();
+            await refreshStatus();
+        }}
+
         pantheonNode.addEventListener('click', (event) => {{
+            const performanceButton = event.target.closest('[data-performance-god]');
+            if (performanceButton) {{
+                event.stopPropagation();
+                evolvePerformance(performanceButton.dataset.performanceGod);
+                return;
+            }}
+
+            const mateButton = event.target.closest('[data-mate-god]');
+            if (mateButton) {{
+                event.stopPropagation();
+                mateGod(mateButton.dataset.mateGod);
+                return;
+            }}
+
             const button = event.target.closest('[data-god]');
             if (!button) {{
                 return;
@@ -459,6 +522,43 @@ async def upgrade(request: Request) -> dict:
         "event_id": event_id,
         "timestamp": timestamp,
         "result": "Infinite companies spawning • Transcending all human intellect",
+    }
+
+
+@app.post("/evolve_performance")
+async def evolve_performance(request: Request) -> dict:
+    payload = await request.json()
+    god_name = payload.get("god", "Unknown entity")
+    timestamp = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    event_id = audit.record(
+        "performance_evolution",
+        {"god": god_name, "boost": "power + rarity"},
+    )
+    return {
+        "success": True,
+        "event_id": event_id,
+        "timestamp": timestamp,
+        "result": f"{god_name} evolved through PERFORMANCE — power and rarity increased!",
+    }
+
+
+@app.post("/mate_gods")
+async def mate_gods(request: Request) -> dict:
+    payload = await request.json()
+    god1 = payload.get("god1", "Unknown entity")
+    god2 = payload.get("god2", "Unknown entity")
+    new_child = f"ChildOf_{god1}_{god2}"
+    timestamp = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    event_id = audit.record(
+        "mating_evolution",
+        {"parents": [god1, god2], "child": new_child},
+    )
+    return {
+        "success": True,
+        "event_id": event_id,
+        "timestamp": timestamp,
+        "child": new_child,
+        "result": f"{god1} + {god2} mated! New god created: {new_child}",
     }
 
 
