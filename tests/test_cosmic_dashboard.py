@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -32,6 +33,63 @@ class CosmicDashboardTests(unittest.TestCase):
         self.assertEqual(payload["total_entities"], cosmic_dashboard.TOTAL_ENTITIES)
         self.assertEqual(payload["version"], cosmic_dashboard.APP_VERSION)
         self.assertEqual(payload["recent_events"], [])
+
+    def test_homepage_includes_rayo_branding(self) -> None:
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Ω RAYO'S NUMBER OF GODS", response.text)
+        self.assertIn('Infinite scroll + virtualization simulation enabled', response.text)
+
+    def test_screenshot_route_returns_success_when_playwright_is_available(self) -> None:
+        class FakePage:
+            async def goto(self, url: str, wait_until: str, timeout: int) -> None:
+                self.url = url
+
+            async def wait_for_selector(self, selector: str, timeout: int) -> None:
+                self.selector = selector
+
+            async def screenshot(self, path: str, full_page: bool) -> None:
+                Path(path).write_bytes(b'png')
+
+        class FakeBrowser:
+            async def new_page(self, viewport: dict) -> FakePage:
+                self.viewport = viewport
+                return FakePage()
+
+            async def close(self) -> None:
+                return None
+
+        class FakeChromium:
+            async def launch(self, headless: bool) -> FakeBrowser:
+                self.headless = headless
+                return FakeBrowser()
+
+        class FakePlaywright:
+            chromium = FakeChromium()
+
+        class FakePlaywrightContext:
+            async def __aenter__(self) -> FakePlaywright:
+                return FakePlaywright()
+
+            async def __aexit__(self, exc_type, exc, tb) -> None:
+                return None
+
+        output_path = Path(self.tempdir.name) / 'pantheon.png'
+        with mock.patch.object(cosmic_dashboard, 'async_playwright', return_value=FakePlaywrightContext()):
+            response = self.client.get('/screenshot', params={'output': str(output_path)})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'success')
+        self.assertEqual(payload['path'], str(output_path))
+        self.assertTrue(output_path.exists())
+
+    def test_screenshot_route_reports_missing_playwright(self) -> None:
+        with mock.patch.object(cosmic_dashboard, 'async_playwright', None):
+            response = self.client.get('/screenshot')
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('Playwright is not installed', response.json()['detail'])
 
     def test_upgrade_records_event_and_updates_tier(self) -> None:
         response = self.client.post(

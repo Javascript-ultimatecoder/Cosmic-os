@@ -9,6 +9,14 @@ class ScreenshotEnvironmentDocsTests(unittest.TestCase):
         self.assertIn('selenium', requirements)
         self.assertIn('webdriver-manager', requirements)
 
+    def test_readme_documents_codex_environment_values(self) -> None:
+        readme = Path('README.md').read_text()
+        self.assertIn('STRIPE_SECRET_KEY', readme)
+        self.assertIn('BINANCE_API_KEY', readme)
+        self.assertIn('OPENAI_API_KEY', readme)
+        self.assertIn('PLAYWRIGHT_BROWSERS_PATH=0', readme)
+        self.assertIn('playwright install chromium', readme)
+
     def test_setup_script_bootstraps_virtual_environment(self) -> None:
         script = Path('scripts/setup_screenshot_env.sh').read_text()
         self.assertIn('python -m pip install -r requirements-screenshot.txt', script)
