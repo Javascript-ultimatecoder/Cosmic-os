@@ -3,6 +3,7 @@ set -euo pipefail
 
 venv_path="${1:-.venv-screenshot}"
 python_bin="${PYTHON_BIN:-python3}"
+playwright_browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$venv_path/playwright-browsers}"
 
 if ! command -v "$python_bin" >/dev/null 2>&1; then
   echo "Python interpreter '$python_bin' was not found." >&2
@@ -12,6 +13,8 @@ fi
 "$python_bin" -m venv "$venv_path"
 # shellcheck disable=SC1090
 source "$venv_path/bin/activate"
+
+export PLAYWRIGHT_BROWSERS_PATH="$playwright_browsers_path"
 
 python -m pip install --upgrade pip
 python -m pip install -r requirements-screenshot.txt
@@ -23,4 +26,5 @@ else
 fi
 
 echo "Screenshot environment ready at $venv_path"
+echo "Playwright browsers path: $PLAYWRIGHT_BROWSERS_PATH"
 echo "Activate it with: source $venv_path/bin/activate"

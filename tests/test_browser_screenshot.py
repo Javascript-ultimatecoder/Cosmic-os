@@ -12,6 +12,9 @@ SPEC.loader.exec_module(browser_screenshot)
 
 
 class BrowserScreenshotTests(unittest.TestCase):
+    def test_detect_browser_executable_prefers_explicit_argument(self) -> None:
+        self.assertEqual(browser_screenshot.detect_browser_executable('/tmp/manual-browser'), '/tmp/manual-browser')
+
     def test_detect_browser_executable_prefers_environment_override(self) -> None:
         with mock.patch.dict(os.environ, {'BROWSER_EXECUTABLE': '/tmp/custom-browser'}, clear=False):
             self.assertEqual(browser_screenshot.detect_browser_executable(), '/tmp/custom-browser')
@@ -27,6 +30,7 @@ class BrowserScreenshotTests(unittest.TestCase):
         self.assertEqual(args.url, 'http://127.0.0.1:8080/')
         self.assertEqual(args.wait_for, '#pantheon')
         self.assertEqual(args.output, 'screenshots/browser_dashboard.png')
+        self.assertIsNone(args.executable_path)
 
 
 if __name__ == '__main__':

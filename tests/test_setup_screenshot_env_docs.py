@@ -14,6 +14,7 @@ class ScreenshotEnvironmentDocsTests(unittest.TestCase):
         self.assertIn('python -m pip install -r requirements-screenshot.txt', script)
         self.assertIn('python -m playwright install chromium', script)
         self.assertIn('source "$venv_path/bin/activate"', script)
+        self.assertIn('PLAYWRIGHT_BROWSERS_PATH', script)
 
 
 if __name__ == '__main__':

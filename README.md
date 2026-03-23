@@ -20,7 +20,13 @@ If you want a dedicated browser screenshot environment, bootstrap it with the in
 source .venv-screenshot/bin/activate
 ```
 
-The helper creates a local virtual environment, upgrades `pip`, installs `requirements-screenshot.txt`, and attempts to install Playwright Chromium. If the Playwright CDN is blocked, the environment is still usable with a system browser.
+The helper creates a local virtual environment, upgrades `pip`, installs `requirements-screenshot.txt`, exports `PLAYWRIGHT_BROWSERS_PATH`, and attempts to install Playwright Chromium. By default, browser binaries are stored inside `<venv>/playwright-browsers`, but you can override that path:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/custom/path/to/browsers ./scripts/setup_screenshot_env.sh
+```
+
+If the Playwright CDN is blocked, the environment is still usable with a system browser.
 
 ### Browser screenshot (recommended for the dashboard)
 
@@ -39,7 +45,7 @@ python -m playwright install chromium
 sudo apt update && sudo apt install -y chromium
 ```
 
-The helper automatically uses `BROWSER_EXECUTABLE` when set, otherwise it looks for `chromium`, `chromium-browser`, or `google-chrome` on `PATH` before falling back to Playwright's managed browser.
+The helper automatically uses `--executable-path`, `BROWSER_EXECUTABLE`, or common `chromium` / `google-chrome` binaries on `PATH`. You can also control Playwright's managed browser storage with `PLAYWRIGHT_BROWSERS_PATH`.
 
 ### Desktop/Xvfb screenshot helper
 

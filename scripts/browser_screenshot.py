@@ -21,11 +21,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="CSS selector to wait for before saving the screenshot",
     )
     parser.add_argument("--timeout-ms", type=int, default=15000, help="Navigation and selector timeout in milliseconds")
+    parser.add_argument("--executable-path", default=None, help="Explicit browser executable path to launch")
     return parser
 
 
-def detect_browser_executable() -> str | None:
-    explicit_path = os.environ.get("BROWSER_EXECUTABLE")
+def detect_browser_executable(explicit_path: str | None = None) -> str | None:
+    explicit_path = explicit_path or os.environ.get("BROWSER_EXECUTABLE")
     if explicit_path:
         return explicit_path
 
@@ -51,7 +52,7 @@ def main() -> int:
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    executable_path = detect_browser_executable()
+    executable_path = detect_browser_executable(args.executable_path)
 
     try:
         with sync_playwright() as playwright:
@@ -74,7 +75,7 @@ def main() -> int:
             ) from exc
         raise SystemExit(f"Unable to launch browser executable {executable_path!r}: {exc}") from exc
 
-    browser_name = executable_path or "playwright-managed chromium"
+    browser_name = executable_path or os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or "playwright-managed chromium"
     print(f"Saved browser screenshot to {output_path} using {browser_name}")
     return 0
 
