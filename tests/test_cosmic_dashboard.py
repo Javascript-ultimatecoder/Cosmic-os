@@ -23,6 +23,28 @@ class CosmicDashboardTests(unittest.TestCase):
         cosmic_dashboard.INTELLIGENCE_TIER = self.original_tier
         self.tempdir.cleanup()
 
+
+    def test_index_contains_rayo_copy(self) -> None:
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        body = response.text
+        self.assertIn("Ω RAYO'S NUMBER OF GODS", body)
+        self.assertIn('Infinite scroll + virtualization enabled', body)
+
+    def test_screenshot_endpoint_creates_png(self) -> None:
+        output_path = Path('/tmp/rayo_pantheon_screenshot.png')
+        if output_path.exists():
+            output_path.unlink()
+
+        response = self.client.get('/screenshot')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload['success'])
+        self.assertEqual(payload['backend'], 'pillow')
+        self.assertEqual(payload['path'], str(output_path))
+        self.assertTrue(output_path.exists())
+        self.assertGreater(output_path.stat().st_size, 0)
+
     def test_status_includes_runtime_and_pantheon_metadata(self) -> None:
         response = self.client.get("/status")
         self.assertEqual(response.status_code, 200)
