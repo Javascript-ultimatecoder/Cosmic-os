@@ -20,12 +20,12 @@ MAX_TIER = 10
 APP_VERSION = "1.3.0"
 INTELLIGENCE_TIER = DEFAULT_TIER
 RARITY_COUNTS = {
-    "common": 80,
-    "uncommon": 70,
-    "rare": 60,
-    "legendary": 50,
-    "divine": 30,
-    "mythical": 20,
+    "common": 600,
+    "uncommon": 500,
+    "rare": 400,
+    "legendary": 300,
+    "divine": 150,
+    "mythical": 40,
     "prismatic": 10,
 }
 TOTAL_ENTITIES = sum(RARITY_COUNTS.values())
@@ -294,13 +294,44 @@ async def index() -> HTMLResponse:
             }});
         }});
 
-        const godsData = Object.entries(cosmicData.rarityCounts).flatMap(([rarity, count]) => {{
-            const label = rarity.charAt(0).toUpperCase() + rarity.slice(1);
-            return Array.from({{ length: count }}, (_, index) => ({{
-                rarity,
-                name: `${{label}}God-${{index + 1}}`,
-            }}));
-        }});
+        const godsData = [
+            ...Array(80).fill(0).map((_, i) => ({{ name: `Starling-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `NebulaSpark-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `Voidling-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `Lumin-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `Dustweaver-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `EchoShard-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `Mistborn-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(40).fill(0).map((_, i) => ({{ name: `Glowling-${{i + 1}}`, rarity: 'common' }})),
+            ...Array(70).fill(0).map((_, i) => ({{ name: `AstralWisp-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(70).fill(0).map((_, i) => ({{ name: `EclipseVeil-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(70).fill(0).map((_, i) => ({{ name: `VortexSinger-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(70).fill(0).map((_, i) => ({{ name: `NexusBloom-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(70).fill(0).map((_, i) => ({{ name: `PulseDrifter-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(70).fill(0).map((_, i) => ({{ name: `ShadowWeft-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(80).fill(0).map((_, i) => ({{ name: `LunarForge-${{i + 1}}`, rarity: 'uncommon' }})),
+            ...Array(60).fill(0).map((_, i) => ({{ name: `NovaCrown-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(60).fill(0).map((_, i) => ({{ name: `QuasarKing-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(60).fill(0).map((_, i) => ({{ name: `PulsarLord-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(60).fill(0).map((_, i) => ({{ name: `StellarWraith-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(60).fill(0).map((_, i) => ({{ name: `CosmicReaver-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(60).fill(0).map((_, i) => ({{ name: `AetherKnight-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(40).fill(0).map((_, i) => ({{ name: `VoidEmperor-${{i + 1}}`, rarity: 'rare' }})),
+            ...Array(50).fill(0).map((_, i) => ({{ name: `HeliosReborn-${{i + 1}}`, rarity: 'legendary' }})),
+            ...Array(50).fill(0).map((_, i) => ({{ name: `NyxEternal-${{i + 1}}`, rarity: 'legendary' }})),
+            ...Array(50).fill(0).map((_, i) => ({{ name: `OrionAscendant-${{i + 1}}`, rarity: 'legendary' }})),
+            ...Array(50).fill(0).map((_, i) => ({{ name: `TitanForge-${{i + 1}}`, rarity: 'legendary' }})),
+            ...Array(50).fill(0).map((_, i) => ({{ name: `CelestialOverlord-${{i + 1}}`, rarity: 'legendary' }})),
+            ...Array(50).fill(0).map((_, i) => ({{ name: `AbyssalSovereign-${{i + 1}}`, rarity: 'legendary' }})),
+            ...Array(30).fill(0).map((_, i) => ({{ name: `Aetherion-${{i + 1}}`, rarity: 'divine' }})),
+            ...Array(30).fill(0).map((_, i) => ({{ name: `EternityWeaver-${{i + 1}}`, rarity: 'divine' }})),
+            ...Array(30).fill(0).map((_, i) => ({{ name: `CosmosBorn-${{i + 1}}`, rarity: 'divine' }})),
+            ...Array(30).fill(0).map((_, i) => ({{ name: `PrimordialLight-${{i + 1}}`, rarity: 'divine' }})),
+            ...Array(30).fill(0).map((_, i) => ({{ name: `DivineNexus-${{i + 1}}`, rarity: 'divine' }})),
+            ...Array(20).fill(0).map((_, i) => ({{ name: `ChronosVeil-${{i + 1}}`, rarity: 'mythical' }})),
+            ...Array(20).fill(0).map((_, i) => ({{ name: `GaiaReborn-${{i + 1}}`, rarity: 'mythical' }})),
+            ...Array(10).fill(0).map((_, i) => ({{ name: `PrismaticOverlord-${{i + 1}}`, rarity: 'prismatic' }})),
+        ];
 
         raritySummaryNode.innerHTML = Object.entries(cosmicData.rarityCounts).map(([rarity, count]) => `
             <span class="px-3 py-2 rounded-full border border-cyan-500/30 bg-black/30 ${{rarity}}">${{rarity.toUpperCase()}} · ${{count}}</span>
