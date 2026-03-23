@@ -81,6 +81,29 @@ class CosmicDashboardTests(unittest.TestCase):
             'ChildOf_DivineGod-2_MythicalGod-4',
         )
 
+    def test_updates_endpoint_and_broadcast_feed(self) -> None:
+        response = self.client.get('/updates')
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['version'], cosmic_dashboard.APP_VERSION)
+        self.assertTrue(payload['updates'])
+
+        broadcast_response = self.client.post(
+            '/broadcast_update',
+            json={'title': 'Omega patch', 'detail': 'Constantly add updates to the code'},
+        )
+        self.assertEqual(broadcast_response.status_code, 200)
+        status_payload = self.client.get('/status').json()
+        self.assertEqual(status_payload['audit_events'], 1)
+        self.assertEqual(status_payload['recent_events'][0]['type'], 'broadcast_update')
+        self.assertEqual(status_payload['recent_events'][0]['payload']['title'], 'Omega patch')
+        self.assertEqual(status_payload['live_updates'][0]['code'], 'broadcast_update')
+
+    def test_broadcast_requires_title_and_detail(self) -> None:
+        response = self.client.post('/broadcast_update', json={'title': '', 'detail': ''})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('required', response.json()['detail'])
+
 
 if __name__ == "__main__":
     unittest.main()
