@@ -7,7 +7,7 @@ COSMIC OPERATING SYSTEM - Procedural god engine with particle physics
 python cosmic_dashboard.py
 ```
 
-The app serves an animated FastAPI dashboard on `http://127.0.0.1:8080` with audit-backed intelligence upgrades, a live status feed, pantheon filtering, runtime metadata, and rarity metrics.
+The app serves an animated FastAPI dashboard on `http://127.0.0.1:8080` with a Rayo-themed pantheon header, audit-backed intelligence upgrades, a live status feed, pantheon filtering, runtime metadata, rarity metrics, and a built-in `/screenshot` endpoint that saves a themed PNG to `/tmp/rayo_pantheon_screenshot.png`.
 
 ## Screenshot workflows
 
@@ -30,10 +30,11 @@ If the Playwright CDN is blocked, the environment is still usable with a system 
 
 ### Browser screenshot (recommended for the dashboard)
 
-Use the Playwright-based helper to capture a real browser rendering of the app:
+Use the Playwright-based helper to capture a real browser rendering of the app, or hit the built-in API endpoint for a quick generated artifact:
 
 ```bash
 python scripts/browser_screenshot.py screenshots/browser_dashboard.png --url http://127.0.0.1:8080/
+curl http://127.0.0.1:8080/screenshot
 ```
 
 Install the browser automation dependency once, then provide either a Playwright-managed browser or a system Chromium binary:

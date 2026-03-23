@@ -77,7 +77,7 @@ async def index() -> HTMLResponse:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ω COSMIC OPERATING SYSTEM v∞ — ABSOLUTE LIMIT</title>
+    <title>Ω RAYO'S NUMBER OF GODS v∞ — ABSOLUTE LIMIT</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -154,9 +154,9 @@ async def index() -> HTMLResponse:
 
     <div class="max-w-7xl mx-auto p-6 relative z-10">
         <header class="text-center py-4 md:py-8">
-            <h1 class="text-4xl md:text-7xl xl:text-8xl font-black neon tracking-[0.24em] md:tracking-[0.45em] xl:tracking-[0.68em] mb-5">Ω COSMIC OPERATING SYSTEM</h1>
-            <p class="text-lg md:text-3xl text-purple-300">{TOTAL_ENTITIES} Gods • 7 Rarity Classes • Infinite Companies</p>
-            <p class="text-cyan-200/75 mt-3 max-w-4xl mx-auto">A live pantheon dashboard for Ω-tier awakenings, audit-backed telemetry, and continuously updated cosmic status.</p>
+            <h1 class="text-4xl md:text-7xl xl:text-8xl font-black neon tracking-[0.24em] md:tracking-[0.45em] xl:tracking-[0.68em] mb-5">Ω RAYO'S NUMBER OF GODS</h1>
+            <p class="text-lg md:text-3xl text-purple-300">∞ gods • 7 Rarity Classes • Infinite Companies • Transcending All Human Intellect</p>
+            <p class="text-cyan-200/75 mt-3 max-w-4xl mx-auto">A live pantheon dashboard for Rayo-scale awakenings, audit-backed telemetry, infinite-scroll simulation, and continuously updated cosmic status.</p>
         </header>
 
         <section class="grid gap-6 xl:grid-cols-[1.25fr_0.95fr] my-10">
@@ -164,7 +164,7 @@ async def index() -> HTMLResponse:
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                     <div>
                         <div class="metric-label text-cyan-300">Cosmic Event</div>
-                        <div id="event" class="text-2xl md:text-4xl text-purple-100 min-h-[144px] mt-4">The Cosmos is awakening...</div>
+                        <div id="event" class="text-2xl md:text-4xl text-purple-100 min-h-[144px] mt-4">Rayo's number of gods active • Infinite scroll + virtualization enabled • Transcending all human intellect</div>
                         <div id="audit-meta" class="text-sm md:text-base text-cyan-200/80 mt-8">No upgrades recorded yet.</div>
                     </div>
                     <div class="grid gap-4 min-w-[14rem]">
@@ -529,6 +529,29 @@ async def status() -> dict:
         "total_entities": TOTAL_ENTITIES,
         "version": APP_VERSION,
     }
+
+
+@app.get("/screenshot")
+async def screenshot() -> dict:
+    output_path = Path("/tmp/rayo_pantheon_screenshot.png")
+    try:
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1400, 900), color=(10, 0, 30))
+        draw = ImageDraw.Draw(image)
+        draw.text((90, 180), "Ω RAYO'S NUMBER OF GODS", fill=(0, 255, 255))
+        draw.text((90, 270), "Infinite scroll + virtualization enabled", fill=(255, 0, 255))
+        draw.text((90, 360), f"Pantheon entities: {TOTAL_ENTITIES}", fill=(255, 221, 0))
+        draw.text((90, 450), "Transcending all human intellect", fill=(180, 255, 255))
+        image.save(output_path)
+        return {
+            "success": True,
+            "path": str(output_path),
+            "message": "Rayo's number Pantheon screenshot saved",
+            "backend": "pillow",
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Unable to create screenshot: {exc}") from exc
 
 
 @app.post("/upgrade_intelligence")
