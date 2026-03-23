@@ -11,6 +11,17 @@ The app serves an animated FastAPI dashboard on `http://127.0.0.1:8080` with aud
 
 ## Screenshot workflows
 
+### Isolated screenshot environment setup
+
+If you want a dedicated browser screenshot environment, bootstrap it with the included helper:
+
+```bash
+./scripts/setup_screenshot_env.sh
+source .venv-screenshot/bin/activate
+```
+
+The helper creates a local virtual environment, upgrades `pip`, installs `requirements-screenshot.txt`, and attempts to install Playwright Chromium. If the Playwright CDN is blocked, the environment is still usable with a system browser.
+
 ### Browser screenshot (recommended for the dashboard)
 
 Use the Playwright-based helper to capture a real browser rendering of the app:
