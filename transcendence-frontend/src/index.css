@@ -1,0 +1,173 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: rgba(255, 255, 255, 0.87);
+  background: radial-gradient(circle at top, #0d1230 0%, #04040d 48%, #000 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+.neon {
+  text-shadow: 0 0 18px #00ffff, 0 0 42px #ff00ff;
+}
+
+.app-shell {
+  min-height: 100vh;
+  color: #9ffcff;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(115, 0, 255, 0.24), transparent 28%),
+    radial-gradient(circle at 80% 0%, rgba(0, 255, 255, 0.2), transparent 26%),
+    linear-gradient(180deg, #070719, #020206 70%);
+}
+
+.hero {
+  text-align: center;
+  padding: 2.5rem 1rem 1.5rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  letter-spacing: 0.18em;
+}
+
+.hero p {
+  margin: 0.75rem 0 0;
+  color: #d8a6ff;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto 1.5rem;
+  padding: 0 1rem;
+}
+
+.metric-card,
+.event-console {
+  border: 1px solid rgba(141, 91, 255, 0.55);
+  background: rgba(7, 8, 24, 0.75);
+  border-radius: 20px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 0 26px rgba(103, 0, 255, 0.16);
+}
+
+.metric-card strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 1.35rem;
+  color: #fff;
+}
+
+.list-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 7rem;
+}
+
+.list-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.list-header input,
+.list-header select {
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+  color: #dfffff;
+  padding: 0.8rem 1rem;
+}
+
+.virtual-list {
+  border: 1px solid rgba(0, 255, 255, 0.15);
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.row {
+  padding: 0.75rem;
+}
+
+.god-card {
+  height: calc(100% - 0.5rem);
+  border-radius: 20px;
+  border: 2px solid currentColor;
+  background: rgba(13, 5, 34, 0.9);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 0 16px currentColor;
+}
+
+.god-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.god-rarity {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  margin-top: 0.4rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  color: white;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.action-upgrade { background: linear-gradient(90deg, #ff00aa, #ff5f6d); }
+.action-performance { background: linear-gradient(90deg, #0088ff, #00d4ff); }
+.action-mate { background: linear-gradient(90deg, #7b2cff, #b84dff); }
+
+.console-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  width: min(800px, calc(100vw - 2rem));
+}
+
+.event-console {
+  text-align: center;
+}
+
+.common { color: #c8d0dd; }
+.uncommon { color: #8ef2c8; }
+.rare { color: #84caff; }
+.legendary { color: #dca1ff; }
+.divine { color: #fff1a3; }
+.mythical { color: #ffaf9f; }
+.prismatic { color: #ffd0ff; }
