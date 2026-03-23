@@ -9,9 +9,30 @@ python cosmic_dashboard.py
 
 The app serves an animated FastAPI dashboard on `http://127.0.0.1:8080` with audit-backed intelligence upgrades, a live status feed, pantheon filtering, runtime metadata, and rarity metrics.
 
-## Screenshot workflow
+## Screenshot workflows
 
-A helper script is included for environments that have an attached GUI or need a headless Xvfb session:
+### Browser screenshot (recommended for the dashboard)
+
+Use the Playwright-based helper to capture a real browser rendering of the app:
+
+```bash
+python scripts/browser_screenshot.py screenshots/browser_dashboard.png --url http://127.0.0.1:8080/
+```
+
+Install the browser automation dependency once, then provide either a Playwright-managed browser or a system Chromium binary:
+
+```bash
+pip install -r requirements.txt
+python -m playwright install chromium
+# or, if the Playwright CDN is blocked:
+sudo apt update && sudo apt install -y chromium
+```
+
+The helper automatically uses `BROWSER_EXECUTABLE` when set, otherwise it looks for `chromium`, `chromium-browser`, or `google-chrome` on `PATH` before falling back to Playwright's managed browser.
+
+### Desktop/Xvfb screenshot helper
+
+A shell helper is also included for environments that have an attached GUI or need a headless Xvfb session:
 
 ```bash
 ./scripts/take_screenshot.sh
