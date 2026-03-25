@@ -129,6 +129,23 @@ async def index() -> HTMLResponse:
                 <h2 class="text-2xl text-fuchsia-300">Pantheon Control Grid</h2>
                 <button id="refresh-feed" class="px-4 py-2 rounded-full border border-cyan-300 text-cyan-200 hover:bg-cyan-400/10">Refresh Audit Feed</button>
             </div>
+            <div class="flex flex-wrap items-center gap-3 mb-5 text-sm">
+                <label for="rarity-filter" class="text-cyan-100">Rarity</label>
+                <select id="rarity-filter" class="bg-black/60 border border-cyan-500 rounded-lg px-3 py-2">
+                    <option value="all">All</option>
+                    <option value="common">Common</option>
+                    <option value="uncommon">Uncommon</option>
+                    <option value="rare">Rare</option>
+                    <option value="legendary">Legendary</option>
+                    <option value="divine">Divine</option>
+                    <option value="mythical">Mythical</option>
+                    <option value="prismatic">Prismatic</option>
+                </select>
+                <span id="grid-count" class="text-cyan-300"></span>
+                <button id="prev-page" class="px-4 py-2 rounded-full border border-purple-300 text-purple-200 hover:bg-purple-400/10">Prev</button>
+                <button id="next-page" class="px-4 py-2 rounded-full border border-purple-300 text-purple-200 hover:bg-purple-400/10">Next</button>
+                <span id="page-indicator" class="text-fuchsia-200"></span>
+            </div>
             <div class="grid grid-cols-2 md:grid-cols-5 xl:grid-cols-6 gap-4" id="pantheon"></div>
         </section>
 
@@ -154,13 +171,34 @@ async def index() -> HTMLResponse:
         const tierNode = document.getElementById('tier');
         const metaNode = document.getElementById('audit-meta');
         const feedNode = document.getElementById('recent-events');
+        const rarityFilter = document.getElementById('rarity-filter');
+        const gridCount = document.getElementById('grid-count');
+        const pageIndicator = document.getElementById('page-indicator');
+        const PAGE_SIZE = 120;
+        let currentPage = 0;
+        let filteredGods = godsData;
 
-        pantheon.innerHTML = godsData.map((god) => `
-            <button onclick="awakenGod('${god.name}')" class="god p-4 rounded-2xl text-center cursor-pointer text-sm font-bold">
+        function renderPantheon() {
+            const totalPages = Math.max(1, Math.ceil(filteredGods.length / PAGE_SIZE));
+            currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
+            const start = currentPage * PAGE_SIZE;
+            const pageData = filteredGods.slice(start, start + PAGE_SIZE);
+            pantheon.innerHTML = pageData.map((god) => `
+            <button onclick="awakenGod(${JSON.stringify(god.name)})" class="god p-4 rounded-2xl text-center cursor-pointer text-sm font-bold">
                 ${god.name}
                 <div class="text-xs mt-2 opacity-80">${god.rarity.toUpperCase()} • ${god.quantumState}</div>
             </button>
         `).join('');
+            gridCount.textContent = `${filteredGods.length} visible gods`;
+            pageIndicator.textContent = `Page ${currentPage + 1} / ${totalPages}`;
+        }
+
+        function applyFilter() {
+            const rarity = rarityFilter.value;
+            filteredGods = rarity === 'all' ? godsData : godsData.filter(g => g.rarity === rarity);
+            currentPage = 0;
+            renderPantheon();
+        }
 
         async function refreshStatus() {
             const res = await fetch('/status');
@@ -190,6 +228,15 @@ async def index() -> HTMLResponse:
         }
 
         document.getElementById('refresh-feed').addEventListener('click', refreshStatus);
+        document.getElementById('prev-page').addEventListener('click', () => {
+            currentPage -= 1;
+            renderPantheon();
+        });
+        document.getElementById('next-page').addEventListener('click', () => {
+            currentPage += 1;
+            renderPantheon();
+        });
+        rarityFilter.addEventListener('change', applyFilter);
         document.getElementById('run-betabot').addEventListener('click', async () => {
             const res = await fetch('/betabot_test', { method: 'POST' });
             const data = await res.json();
@@ -197,6 +244,7 @@ async def index() -> HTMLResponse:
             metaNode.textContent = `BetaBot: ${data.tests.length} tests • consensus=${data.consensus}`;
             await refreshStatus();
         });
+        applyFilter();
         refreshStatus();
 
         const canvas = document.getElementById('cosmos');
