@@ -102,6 +102,7 @@ GOD_STATE: dict[str, dict] = {}
 EVOLUTION_TICKS = 0
 TOTAL_BIRTHS = 0
 LATEST_SCREENSHOT = Path("/tmp/cosmic_latest_snapshot.png")
+COMPANIES: list[dict] = []
 
 
 def _init_god_state() -> None:
@@ -134,6 +135,7 @@ def _run_evolution_cycle(cycle_size: int = 18) -> dict:
     births = 0
     promotions = 0
     boosted = 0
+    companies_spawned = 0
 
     for _ in range(cycle_size):
         parent_a, parent_b = random.sample(gods, 2)
@@ -166,6 +168,17 @@ def _run_evolution_cycle(cycle_size: int = 18) -> dict:
                     promotions += 1
             if random.random() < 0.25:
                 parent["tier"] = min(MAX_TIER, parent["tier"] + 1)
+            if parent["tier"] >= 7 and random.random() < 0.1:
+                company = {
+                    "name": f"{parent['name']}-Labs-{len(COMPANIES) + 1}",
+                    "founder": parent["name"],
+                    "rarity": parent["rarity"],
+                    "valuation": random.randint(3, 40) * 1_000_000,
+                    "created_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+                }
+                COMPANIES.append(company)
+                companies_spawned += 1
+                audit.record("company_spawned", company)
 
     EVOLUTION_TICKS += 1
     TOTAL_BIRTHS += births
@@ -180,6 +193,7 @@ def _run_evolution_cycle(cycle_size: int = 18) -> dict:
             "promotions": promotions,
             "boosted": boosted,
             "population": len(GOD_STATE),
+            "companies_spawned": companies_spawned,
         },
     )
     return {
@@ -188,6 +202,8 @@ def _run_evolution_cycle(cycle_size: int = 18) -> dict:
         "promotions": promotions,
         "boosted": boosted,
         "population": len(GOD_STATE),
+        "companies_spawned": companies_spawned,
+        "companies_total": len(COMPANIES),
         "tier": INTELLIGENCE_TIER,
     }
 
@@ -283,6 +299,14 @@ async def index() -> HTMLResponse:
             <h2 class="text-2xl text-lime-300 mb-4">Latest Snapshot</h2>
             <img id="latest-shot" alt="Latest cosmic snapshot" class="w-full rounded-2xl border border-lime-500/40" src="/snapshot/latest?ts=0" />
         </section>
+
+        <section class="bg-black/50 border border-yellow-600 rounded-3xl p-6 mt-8">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl text-yellow-300 mb-4">Infinite Company Forge</h2>
+                <button id="run-company-forge" class="px-5 py-3 rounded-2xl border border-yellow-400 text-yellow-300 hover:bg-yellow-400/10">🏭 Spawn Company</button>
+            </div>
+            <div id="company-list" class="grid gap-2 text-sm text-yellow-100/90"></div>
+        </section>
     </div>
 
     <script>
@@ -296,6 +320,7 @@ async def index() -> HTMLResponse:
         const gridCount = document.getElementById('grid-count');
         const pageIndicator = document.getElementById('page-indicator');
         const latestShot = document.getElementById('latest-shot');
+        const companyList = document.getElementById('company-list');
         const PAGE_SIZE = 120;
         let currentPage = 0;
         let totalGods = 0;
@@ -346,6 +371,15 @@ async def index() -> HTMLResponse:
                     <div class="mt-2 text-fuchsia-200">${JSON.stringify(item.payload)}</div>
                 </div>
             `).join('') || '<div class="text-cyan-100/70">No cosmic events yet.</div>';
+
+            const companies = await (await fetch('/companies?limit=8')).json();
+            companyList.innerHTML = companies.items.map(c => `
+                <div class="border border-yellow-500/40 rounded-2xl p-3 bg-yellow-500/5">
+                    <div class="font-bold">${c.name}</div>
+                    <div class="opacity-80">Founder: ${c.founder} • Rarity: ${c.rarity}</div>
+                    <div class="opacity-80">Valuation: $${c.valuation.toLocaleString()}</div>
+                </div>
+            `).join('') || '<div class="text-yellow-200/80">No companies forged yet.</div>';
         }
 
         async function awakenGod(god) {
@@ -382,7 +416,7 @@ async def index() -> HTMLResponse:
             const res = await fetch('/evolution_tick', { method: 'POST' });
             const data = await res.json();
             eventNode.textContent = `Evolution tick ${data.tick}: births=${data.births}, promotions=${data.promotions}, population=${data.population}`;
-            metaNode.textContent = `Autonomous evolution active • total births ${data.total_births}`;
+            metaNode.textContent = `Autonomous evolution active • births ${data.total_births} • companies ${data.companies_total}`;
             await refreshStatus();
         });
         document.getElementById('capture-shot').addEventListener('click', async () => {
@@ -390,6 +424,13 @@ async def index() -> HTMLResponse:
             const data = await res.json();
             eventNode.textContent = data.result;
             latestShot.src = `/snapshot/latest?ts=${Date.now()}`;
+            await refreshStatus();
+        });
+        document.getElementById('run-company-forge').addEventListener('click', async () => {
+            const res = await fetch('/spawn_company', { method: 'POST' });
+            const data = await res.json();
+            eventNode.textContent = data.result;
+            metaNode.textContent = `Company forged by ${data.company.founder}`;
             await refreshStatus();
         });
         applyFilter().catch(() => { eventNode.textContent = 'Pantheon fetch failed.'; });
@@ -447,6 +488,7 @@ async def status() -> dict:
         "population": len(GOD_STATE) if GOD_STATE else sum(PANTHEON_DISTRIBUTION.values()),
         "evolution_ticks": EVOLUTION_TICKS,
         "total_births": TOTAL_BIRTHS,
+        "total_companies": len(COMPANIES),
         "recent_events": events,
     }
 
@@ -528,6 +570,30 @@ async def snapshot_capture() -> dict:
     image.save(LATEST_SCREENSHOT)
     audit.record("snapshot_capture", {"path": str(LATEST_SCREENSHOT), "population": len(GOD_STATE)})
     return {"success": True, "path": str(LATEST_SCREENSHOT), "result": "Snapshot captured for browser screenshot workflows."}
+
+
+@app.get("/companies")
+async def companies(limit: int = 20) -> dict:
+    if limit < 1 or limit > 200:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
+    items = sorted(COMPANIES, key=lambda c: c["valuation"], reverse=True)[:limit]
+    return {"total": len(COMPANIES), "items": items}
+
+
+@app.post("/spawn_company")
+async def spawn_company() -> dict:
+    _init_god_state()
+    founder = max(GOD_STATE.values(), key=lambda g: (g["tier"], g["power"]))
+    company = {
+        "name": f"{founder['name']}-OmniCorp-{len(COMPANIES) + 1}",
+        "founder": founder["name"],
+        "rarity": founder["rarity"],
+        "valuation": random.randint(8, 120) * 1_000_000,
+        "created_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    COMPANIES.append(company)
+    audit.record("manual_company_spawned", company)
+    return {"success": True, "company": company, "result": f"{company['name']} has been forged."}
 
 
 @app.get("/snapshot/latest")
