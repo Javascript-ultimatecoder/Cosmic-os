@@ -104,6 +104,7 @@ TOTAL_BIRTHS = 0
 LATEST_SCREENSHOT = Path("/tmp/cosmic_latest_snapshot.png")
 COMPANIES: list[dict] = []
 BATTLE_LOG: list[dict] = []
+STATE_PATH = Path("/tmp/cosmic_state.json")
 
 
 def _init_god_state() -> None:
@@ -119,6 +120,38 @@ def _init_god_state() -> None:
                 "power": random.randint(40, 130),
                 "offspring": 0,
             }
+
+
+def _save_state_to_disk() -> None:
+    payload = {
+        "intelligence_tier": INTELLIGENCE_TIER,
+        "evolution_ticks": EVOLUTION_TICKS,
+        "total_births": TOTAL_BIRTHS,
+        "god_state": list(GOD_STATE.values()),
+        "companies": COMPANIES,
+        "battle_log": BATTLE_LOG[-500:],
+        "saved_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    STATE_PATH.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+
+def _load_state_from_disk() -> bool:
+    global INTELLIGENCE_TIER, EVOLUTION_TICKS, TOTAL_BIRTHS
+    if not STATE_PATH.exists():
+        return False
+
+    payload = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    GOD_STATE.clear()
+    for row in payload.get("god_state", []):
+        GOD_STATE[row["name"]] = row
+    COMPANIES.clear()
+    COMPANIES.extend(payload.get("companies", []))
+    BATTLE_LOG.clear()
+    BATTLE_LOG.extend(payload.get("battle_log", []))
+    INTELLIGENCE_TIER = int(payload.get("intelligence_tier", INTELLIGENCE_TIER))
+    EVOLUTION_TICKS = int(payload.get("evolution_ticks", EVOLUTION_TICKS))
+    TOTAL_BIRTHS = int(payload.get("total_births", TOTAL_BIRTHS))
+    return True
 
 
 def _promote_rarity(current: str) -> str:
@@ -197,6 +230,7 @@ def _run_evolution_cycle(cycle_size: int = 18) -> dict:
             "companies_spawned": companies_spawned,
         },
     )
+    _save_state_to_disk()
     return {
         "tick": EVOLUTION_TICKS,
         "births": births,
@@ -237,6 +271,7 @@ def _run_battle_tournament(rounds: int = 12) -> dict:
         BATTLE_LOG.append(battle)
         audit.record("god_battle", battle)
 
+    _save_state_to_disk()
     return {
         "rounds": rounds,
         "battles": battles,
@@ -298,6 +333,8 @@ async def index() -> HTMLResponse:
                 <button id="run-betabot" class="mt-5 px-5 py-3 rounded-2xl border border-pink-400 text-pink-300 hover:bg-pink-400/10">🚀 Run BetaBot Test</button>
                 <button id="run-evolution" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10">🧬 Run Evolution Cycle</button>
                 <button id="capture-shot" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-lime-400 text-lime-300 hover:bg-lime-400/10">📸 Capture Screenshot</button>
+                <button id="export-state" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-sky-400 text-sky-300 hover:bg-sky-400/10">💾 Export State</button>
+                <button id="import-state" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-sky-400 text-sky-300 hover:bg-sky-400/10">♻️ Import State</button>
             </section>
         </div>
 
@@ -493,6 +530,18 @@ async def index() -> HTMLResponse:
             metaNode.textContent = `Top winner: ${data.battles?.[0]?.winner || 'Unknown'}`;
             await refreshStatus();
         });
+        document.getElementById('export-state').addEventListener('click', async () => {
+            const res = await fetch('/state/export');
+            const data = await res.json();
+            eventNode.textContent = `State exported to ${data.path}`;
+            await refreshStatus();
+        });
+        document.getElementById('import-state').addEventListener('click', async () => {
+            const res = await fetch('/state/import', { method: 'POST' });
+            const data = await res.json();
+            eventNode.textContent = `State imported: population=${data.population}, companies=${data.companies}`;
+            await refreshStatus();
+        });
         applyFilter().catch(() => { eventNode.textContent = 'Pantheon fetch failed.'; });
         refreshStatus();
 
@@ -551,6 +600,7 @@ async def status() -> dict:
         "total_companies": len(COMPANIES),
         "total_battles": len(BATTLE_LOG),
         "recent_events": events,
+        "state_file": str(STATE_PATH),
     }
 
 
@@ -654,6 +704,27 @@ async def chronicle(limit: int = 20) -> dict:
     }
 
 
+@app.get("/state/export")
+async def state_export() -> dict:
+    _save_state_to_disk()
+    return {"success": True, "path": str(STATE_PATH), "exists": STATE_PATH.exists()}
+
+
+@app.post("/state/import")
+async def state_import() -> dict:
+    loaded = _load_state_from_disk()
+    if not loaded:
+        raise HTTPException(status_code=404, detail="state file not found")
+    audit.record("state_imported", {"path": str(STATE_PATH), "population": len(GOD_STATE)})
+    return {
+        "success": True,
+        "population": len(GOD_STATE),
+        "companies": len(COMPANIES),
+        "battles": len(BATTLE_LOG),
+        "tier": INTELLIGENCE_TIER,
+    }
+
+
 @app.post("/spawn_company")
 async def spawn_company() -> dict:
     _init_god_state()
@@ -667,6 +738,7 @@ async def spawn_company() -> dict:
     }
     COMPANIES.append(company)
     audit.record("manual_company_spawned", company)
+    _save_state_to_disk()
     return {"success": True, "company": company, "result": f"{company['name']} has been forged."}
 
 
@@ -686,7 +758,9 @@ async def snapshot_latest() -> FileResponse:
 
 @app.on_event("startup")
 async def startup_autonomous_evolution() -> None:
-    _init_god_state()
+    restored = _load_state_from_disk()
+    if not restored:
+        _init_god_state()
 
     async def evolver() -> None:
         while True:
