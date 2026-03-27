@@ -8,6 +8,7 @@ import hashlib
 import json
 import sqlite3
 import random
+import asyncio
 from contextlib import closing
 from pathlib import Path
 
@@ -45,6 +46,16 @@ QUANTUM_BY_RARITY = {
     "divine": "Stable",
     "mythical": "Chaotic",
     "prismatic": "Entangled",
+}
+RARITY_ORDER = ["common", "uncommon", "rare", "legendary", "divine", "mythical", "prismatic"]
+RARITY_PROMOTION_CHANCE = {
+    "common": 0.28,
+    "uncommon": 0.22,
+    "rare": 0.18,
+    "legendary": 0.13,
+    "divine": 0.08,
+    "mythical": 0.05,
+    "prismatic": 0.0,
 }
 
 
@@ -85,6 +96,97 @@ class AuditLedger:
 
 audit = AuditLedger()
 app = FastAPI(title="Cosmic Operating System", version="1.0.0")
+GOD_STATE: dict[str, dict] = {}
+EVOLUTION_TICKS = 0
+TOTAL_BIRTHS = 0
+
+
+def _init_god_state() -> None:
+    if GOD_STATE:
+        return
+    for rarity, count in PANTHEON_DISTRIBUTION.items():
+        for idx in range(1, count + 1):
+            god_name = f"{rarity.capitalize()}God-{idx}"
+            GOD_STATE[god_name] = {
+                "name": god_name,
+                "rarity": rarity,
+                "tier": random.randint(0, 3),
+                "power": random.randint(40, 130),
+                "offspring": 0,
+            }
+
+
+def _promote_rarity(current: str) -> str:
+    current_index = RARITY_ORDER.index(current)
+    if current_index == len(RARITY_ORDER) - 1:
+        return current
+    return RARITY_ORDER[current_index + 1]
+
+
+def _run_evolution_cycle(cycle_size: int = 18) -> dict:
+    global EVOLUTION_TICKS, TOTAL_BIRTHS, INTELLIGENCE_TIER
+    _init_god_state()
+
+    gods = list(GOD_STATE.values())
+    births = 0
+    promotions = 0
+    boosted = 0
+
+    for _ in range(cycle_size):
+        parent_a, parent_b = random.sample(gods, 2)
+        parent_a["power"] += random.randint(1, 8)
+        parent_b["power"] += random.randint(1, 8)
+        boosted += 2
+
+        if random.random() < 0.62:
+            child_rarity = parent_a["rarity"] if random.random() < 0.5 else parent_b["rarity"]
+            child_name = (
+                f"Child-{parent_a['name'].split('-')[-1]}-{parent_b['name'].split('-')[-1]}-{TOTAL_BIRTHS + births + 1}"
+            )
+            GOD_STATE[child_name] = {
+                "name": child_name,
+                "rarity": child_rarity,
+                "tier": min(MAX_TIER, max(parent_a["tier"], parent_b["tier"]) + random.randint(0, 2)),
+                "power": random.randint(60, 170),
+                "offspring": 0,
+            }
+            parent_a["offspring"] += 1
+            parent_b["offspring"] += 1
+            births += 1
+
+        for parent in (parent_a, parent_b):
+            chance = RARITY_PROMOTION_CHANCE[parent["rarity"]]
+            if random.random() < chance:
+                new_rarity = _promote_rarity(parent["rarity"])
+                if new_rarity != parent["rarity"]:
+                    parent["rarity"] = new_rarity
+                    promotions += 1
+            if random.random() < 0.25:
+                parent["tier"] = min(MAX_TIER, parent["tier"] + 1)
+
+    EVOLUTION_TICKS += 1
+    TOTAL_BIRTHS += births
+    INTELLIGENCE_TIER = min(MAX_TIER, INTELLIGENCE_TIER + 1 if promotions > 2 else INTELLIGENCE_TIER)
+
+    audit.record(
+        "autonomous_evolution_cycle",
+        {
+            "tick": EVOLUTION_TICKS,
+            "cycle_size": cycle_size,
+            "births": births,
+            "promotions": promotions,
+            "boosted": boosted,
+            "population": len(GOD_STATE),
+        },
+    )
+    return {
+        "tick": EVOLUTION_TICKS,
+        "births": births,
+        "promotions": promotions,
+        "boosted": boosted,
+        "population": len(GOD_STATE),
+        "tier": INTELLIGENCE_TIER,
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -139,6 +241,7 @@ async def index() -> HTMLResponse:
                 <div id="event" class="text-2xl text-purple-100 min-h-[80px] mt-3">The Cosmos is awakening...</div>
                 <div id="audit-meta" class="text-sm text-cyan-200/80 mt-4">No upgrades recorded yet.</div>
                 <button id="run-betabot" class="mt-5 px-5 py-3 rounded-2xl border border-pink-400 text-pink-300 hover:bg-pink-400/10">🚀 Run BetaBot Test</button>
+                <button id="run-evolution" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10">🧬 Run Evolution Cycle</button>
             </section>
         </div>
 
@@ -209,6 +312,7 @@ async def index() -> HTMLResponse:
             <button onclick="awakenGod(${JSON.stringify(god.name)})" class="god p-4 rounded-2xl text-center cursor-pointer text-sm font-bold">
                 ${god.name}
                 <div class="text-xs mt-2 opacity-80">${god.rarity.toUpperCase()} • ${god.quantumState}</div>
+                <div class="text-[10px] opacity-70">Tier ${god.tier} • Power ${god.power} • Offspring ${god.offspring}</div>
             </button>
         `).join('');
             gridCount.textContent = `${totalGods} visible gods`;
@@ -264,6 +368,13 @@ async def index() -> HTMLResponse:
             metaNode.textContent = `BetaBot: ${data.tests.length} tests • consensus=${data.consensus}`;
             await refreshStatus();
         });
+        document.getElementById('run-evolution').addEventListener('click', async () => {
+            const res = await fetch('/evolution_tick', { method: 'POST' });
+            const data = await res.json();
+            eventNode.textContent = `Evolution tick ${data.tick}: births=${data.births}, promotions=${data.promotions}, population=${data.population}`;
+            metaNode.textContent = `Autonomous evolution active • total births ${data.total_births}`;
+            await refreshStatus();
+        });
         applyFilter().catch(() => { eventNode.textContent = 'Pantheon fetch failed.'; });
         refreshStatus();
 
@@ -316,12 +427,16 @@ async def status() -> dict:
         "tier": INTELLIGENCE_TIER,
         "audit_db": str(DB_PATH),
         "audit_events": len(audit.recent_events(limit=1000)),
+        "population": len(GOD_STATE) if GOD_STATE else sum(PANTHEON_DISTRIBUTION.values()),
+        "evolution_ticks": EVOLUTION_TICKS,
+        "total_births": TOTAL_BIRTHS,
         "recent_events": events,
     }
 
 
 @app.get("/pantheon")
 async def pantheon(rarity: str = "all", page: int = 1, page_size: int = 120) -> dict:
+    _init_god_state()
     if page < 1:
         raise HTTPException(status_code=400, detail="page must be >= 1")
     if page_size < 1 or page_size > 300:
@@ -331,22 +446,19 @@ async def pantheon(rarity: str = "all", page: int = 1, page_size: int = 120) -> 
     if rarity_key != "all" and rarity_key not in PANTHEON_DISTRIBUTION:
         raise HTTPException(status_code=400, detail="invalid rarity")
 
-    def generate_rows(target_rarity: str, count: int) -> list[dict]:
-        return [
-            {
-                "name": f"{target_rarity.capitalize()}God-{i}",
-                "rarity": target_rarity,
-                "quantumState": QUANTUM_BY_RARITY[target_rarity],
-            }
-            for i in range(1, count + 1)
-        ]
-
-    rows: list[dict] = []
-    if rarity_key == "all":
-        for rarity_name, count in PANTHEON_DISTRIBUTION.items():
-            rows.extend(generate_rows(rarity_name, count))
-    else:
-        rows = generate_rows(rarity_key, PANTHEON_DISTRIBUTION[rarity_key])
+    rows = [
+        {
+            "name": god["name"],
+            "rarity": god["rarity"],
+            "tier": god["tier"],
+            "power": god["power"],
+            "quantumState": QUANTUM_BY_RARITY[god["rarity"]],
+            "offspring": god["offspring"],
+        }
+        for god in GOD_STATE.values()
+        if rarity_key == "all" or god["rarity"] == rarity_key
+    ]
+    rows.sort(key=lambda item: (RARITY_ORDER.index(item["rarity"]), -item["tier"], -item["power"], item["name"]))
 
     total = len(rows)
     total_pages = max(1, (total + page_size - 1) // page_size)
@@ -362,6 +474,27 @@ async def pantheon(rarity: str = "all", page: int = 1, page_size: int = 120) -> 
         "total_pages": total_pages,
         "items": items,
     }
+
+
+@app.post("/evolution_tick")
+async def evolution_tick(cycle_size: int = 18) -> dict:
+    if cycle_size < 2 or cycle_size > 100:
+        raise HTTPException(status_code=400, detail="cycle_size must be between 2 and 100")
+    result = _run_evolution_cycle(cycle_size=cycle_size)
+    result["total_births"] = TOTAL_BIRTHS
+    return result
+
+
+@app.on_event("startup")
+async def startup_autonomous_evolution() -> None:
+    _init_god_state()
+
+    async def evolver() -> None:
+        while True:
+            _run_evolution_cycle(cycle_size=6)
+            await asyncio.sleep(25)
+
+    asyncio.create_task(evolver())
 
 
 @app.post("/upgrade_intelligence")
