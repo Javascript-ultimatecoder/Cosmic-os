@@ -105,6 +105,7 @@ LATEST_SCREENSHOT = Path("/tmp/cosmic_latest_snapshot.png")
 COMPANIES: list[dict] = []
 BATTLE_LOG: list[dict] = []
 STATE_PATH = Path("/tmp/cosmic_state.json")
+MOORE_CYCLES = 0
 
 
 def _init_god_state() -> None:
@@ -127,6 +128,7 @@ def _save_state_to_disk() -> None:
         "intelligence_tier": INTELLIGENCE_TIER,
         "evolution_ticks": EVOLUTION_TICKS,
         "total_births": TOTAL_BIRTHS,
+        "moore_cycles": MOORE_CYCLES,
         "god_state": list(GOD_STATE.values()),
         "companies": COMPANIES,
         "battle_log": BATTLE_LOG[-500:],
@@ -136,7 +138,7 @@ def _save_state_to_disk() -> None:
 
 
 def _load_state_from_disk() -> bool:
-    global INTELLIGENCE_TIER, EVOLUTION_TICKS, TOTAL_BIRTHS
+    global INTELLIGENCE_TIER, EVOLUTION_TICKS, TOTAL_BIRTHS, MOORE_CYCLES
     if not STATE_PATH.exists():
         return False
 
@@ -151,6 +153,7 @@ def _load_state_from_disk() -> bool:
     INTELLIGENCE_TIER = int(payload.get("intelligence_tier", INTELLIGENCE_TIER))
     EVOLUTION_TICKS = int(payload.get("evolution_ticks", EVOLUTION_TICKS))
     TOTAL_BIRTHS = int(payload.get("total_births", TOTAL_BIRTHS))
+    MOORE_CYCLES = int(payload.get("moore_cycles", MOORE_CYCLES))
     return True
 
 
@@ -279,6 +282,40 @@ def _run_battle_tournament(rounds: int = 12) -> dict:
     }
 
 
+def _run_moore_acceleration(generations: int = 1) -> dict:
+    global MOORE_CYCLES, INTELLIGENCE_TIER
+    _init_god_state()
+    generations = max(1, min(generations, 6))
+    boosted: list[dict] = []
+
+    champions = sorted(GOD_STATE.values(), key=lambda g: (g["tier"], g["power"]), reverse=True)[:50]
+    multiplier = 2**generations
+    for god in champions:
+        before = god["power"]
+        god["power"] = min(100_000, god["power"] * multiplier)
+        god["tier"] = min(MAX_TIER, god["tier"] + generations)
+        boosted.append({"name": god["name"], "power_before": before, "power_after": god["power"]})
+
+    for company in COMPANIES:
+        company["valuation"] = int(company["valuation"] * (1.12**generations))
+
+    MOORE_CYCLES += 1
+    INTELLIGENCE_TIER = min(MAX_TIER, INTELLIGENCE_TIER + 1)
+    audit.record(
+        "moore_acceleration",
+        {"generations": generations, "boosted_count": len(boosted), "companies": len(COMPANIES), "cycle": MOORE_CYCLES},
+    )
+    _save_state_to_disk()
+    return {
+        "success": True,
+        "generations": generations,
+        "boosted_count": len(boosted),
+        "moore_cycles": MOORE_CYCLES,
+        "tier": INTELLIGENCE_TIER,
+        "sample": boosted[:5],
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
     html = """<!DOCTYPE html>
@@ -335,6 +372,7 @@ async def index() -> HTMLResponse:
                 <button id="capture-shot" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-lime-400 text-lime-300 hover:bg-lime-400/10">📸 Capture Screenshot</button>
                 <button id="export-state" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-sky-400 text-sky-300 hover:bg-sky-400/10">💾 Export State</button>
                 <button id="import-state" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-sky-400 text-sky-300 hover:bg-sky-400/10">♻️ Import State</button>
+                <button id="run-moore" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-indigo-400 text-indigo-300 hover:bg-indigo-400/10">🧠 Run Moore Boost</button>
             </section>
         </div>
 
@@ -542,6 +580,13 @@ async def index() -> HTMLResponse:
             eventNode.textContent = `State imported: population=${data.population}, companies=${data.companies}`;
             await refreshStatus();
         });
+        document.getElementById('run-moore').addEventListener('click', async () => {
+            const res = await fetch('/moore_boost?generations=2', { method: 'POST' });
+            const data = await res.json();
+            eventNode.textContent = `Moore boost complete: ${data.boosted_count} gods amplified`;
+            metaNode.textContent = `Moore cycles ${data.moore_cycles} • tier ${data.tier}`;
+            await refreshStatus();
+        });
         applyFilter().catch(() => { eventNode.textContent = 'Pantheon fetch failed.'; });
         refreshStatus();
 
@@ -599,6 +644,7 @@ async def status() -> dict:
         "total_births": TOTAL_BIRTHS,
         "total_companies": len(COMPANIES),
         "total_battles": len(BATTLE_LOG),
+        "moore_cycles": MOORE_CYCLES,
         "recent_events": events,
         "state_file": str(STATE_PATH),
     }
@@ -747,6 +793,13 @@ async def tournament(rounds: int = 12) -> dict:
     if rounds < 1 or rounds > 200:
         raise HTTPException(status_code=400, detail="rounds must be between 1 and 200")
     return _run_battle_tournament(rounds=rounds)
+
+
+@app.post("/moore_boost")
+async def moore_boost(generations: int = 1) -> dict:
+    if generations < 1 or generations > 6:
+        raise HTTPException(status_code=400, detail="generations must be between 1 and 6")
+    return _run_moore_acceleration(generations=generations)
 
 
 @app.get("/snapshot/latest")
