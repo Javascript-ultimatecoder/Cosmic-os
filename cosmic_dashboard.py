@@ -13,8 +13,10 @@ from contextlib import closing
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse
 import uvicorn
+from PIL import Image, ImageDraw, ImageFont
 
 DB_PATH = Path("omega_ultra_audit.db")
 DEFAULT_TIER = 0
@@ -99,6 +101,7 @@ app = FastAPI(title="Cosmic Operating System", version="1.0.0")
 GOD_STATE: dict[str, dict] = {}
 EVOLUTION_TICKS = 0
 TOTAL_BIRTHS = 0
+LATEST_SCREENSHOT = Path("/tmp/cosmic_latest_snapshot.png")
 
 
 def _init_god_state() -> None:
@@ -242,6 +245,7 @@ async def index() -> HTMLResponse:
                 <div id="audit-meta" class="text-sm text-cyan-200/80 mt-4">No upgrades recorded yet.</div>
                 <button id="run-betabot" class="mt-5 px-5 py-3 rounded-2xl border border-pink-400 text-pink-300 hover:bg-pink-400/10">🚀 Run BetaBot Test</button>
                 <button id="run-evolution" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10">🧬 Run Evolution Cycle</button>
+                <button id="capture-shot" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-lime-400 text-lime-300 hover:bg-lime-400/10">📸 Capture Screenshot</button>
             </section>
         </div>
 
@@ -274,6 +278,11 @@ async def index() -> HTMLResponse:
             <h2 class="text-2xl text-cyan-300 mb-4">Recent Audit Events</h2>
             <div id="recent-events" class="grid gap-3 text-sm text-cyan-100/90"></div>
         </section>
+
+        <section class="bg-black/50 border border-lime-600 rounded-3xl p-6 mt-8">
+            <h2 class="text-2xl text-lime-300 mb-4">Latest Snapshot</h2>
+            <img id="latest-shot" alt="Latest cosmic snapshot" class="w-full rounded-2xl border border-lime-500/40" src="/snapshot/latest?ts=0" />
+        </section>
     </div>
 
     <script>
@@ -286,6 +295,7 @@ async def index() -> HTMLResponse:
         const rarityFilter = document.getElementById('rarity-filter');
         const gridCount = document.getElementById('grid-count');
         const pageIndicator = document.getElementById('page-indicator');
+        const latestShot = document.getElementById('latest-shot');
         const PAGE_SIZE = 120;
         let currentPage = 0;
         let totalGods = 0;
@@ -373,6 +383,13 @@ async def index() -> HTMLResponse:
             const data = await res.json();
             eventNode.textContent = `Evolution tick ${data.tick}: births=${data.births}, promotions=${data.promotions}, population=${data.population}`;
             metaNode.textContent = `Autonomous evolution active • total births ${data.total_births}`;
+            await refreshStatus();
+        });
+        document.getElementById('capture-shot').addEventListener('click', async () => {
+            const res = await fetch('/snapshot/capture', { method: 'POST' });
+            const data = await res.json();
+            eventNode.textContent = data.result;
+            latestShot.src = `/snapshot/latest?ts=${Date.now()}`;
             await refreshStatus();
         });
         applyFilter().catch(() => { eventNode.textContent = 'Pantheon fetch failed.'; });
@@ -483,6 +500,41 @@ async def evolution_tick(cycle_size: int = 18) -> dict:
     result = _run_evolution_cycle(cycle_size=cycle_size)
     result["total_births"] = TOTAL_BIRTHS
     return result
+
+
+@app.post("/snapshot/capture")
+async def snapshot_capture() -> dict:
+    _init_god_state()
+    status_rows = sorted(GOD_STATE.values(), key=lambda item: (-item["tier"], -item["power"]))[:5]
+
+    image = Image.new("RGB", (1280, 720), color=(8, 8, 24))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default()
+
+    draw.text((40, 30), "COSMIC OS SNAPSHOT", fill=(0, 255, 255), font=font)
+    draw.text((40, 55), f"timestamp: {datetime.datetime.now(datetime.UTC).isoformat()}", fill=(155, 255, 255), font=font)
+    draw.text((40, 80), f"tier: {INTELLIGENCE_TIER} | population: {len(GOD_STATE)} | births: {TOTAL_BIRTHS}", fill=(155, 255, 155), font=font)
+    draw.text((40, 120), "Top Gods", fill=(255, 180, 255), font=font)
+    y = 150
+    for row in status_rows:
+        draw.text(
+            (40, y),
+            f"{row['name']}  rarity={row['rarity']} tier={row['tier']} power={row['power']} offspring={row['offspring']}",
+            fill=(225, 225, 255),
+            font=font,
+        )
+        y += 26
+
+    image.save(LATEST_SCREENSHOT)
+    audit.record("snapshot_capture", {"path": str(LATEST_SCREENSHOT), "population": len(GOD_STATE)})
+    return {"success": True, "path": str(LATEST_SCREENSHOT), "result": "Snapshot captured for browser screenshot workflows."}
+
+
+@app.get("/snapshot/latest")
+async def snapshot_latest() -> FileResponse:
+    if not LATEST_SCREENSHOT.exists():
+        raise HTTPException(status_code=404, detail="no snapshot captured yet")
+    return FileResponse(path=LATEST_SCREENSHOT, media_type="image/png")
 
 
 @app.on_event("startup")
