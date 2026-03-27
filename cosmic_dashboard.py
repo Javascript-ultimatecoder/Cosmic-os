@@ -603,6 +603,35 @@ async def snapshot_latest() -> FileResponse:
     return FileResponse(path=LATEST_SCREENSHOT, media_type="image/png")
 
 
+@app.get("/snapshot/stage", response_class=HTMLResponse)
+async def snapshot_stage() -> HTMLResponse:
+    """Screenshot-friendly page that browser automation tools can capture directly."""
+    html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Snapshot Stage</title>
+  <style>
+    body { background:#050510; color:#d8ffff; font-family: Arial, sans-serif; margin:0; padding:24px; }
+    .card { border:1px solid #29e0ff; border-radius:16px; padding:16px; background:rgba(0,40,55,0.35); max-width:980px; margin:auto; }
+    h1 { margin-top:0; color:#62f8ff; letter-spacing:0.08em; }
+    .hint { opacity:0.9; margin-top:12px; color:#afffff; }
+    img { width:100%; border-radius:12px; border:1px solid #56ff9f66; margin-top:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Cosmic Snapshot Stage</h1>
+    <div>Use this endpoint for deterministic browser screenshots.</div>
+    <div class="hint">1) POST /snapshot/capture, 2) open /snapshot/stage, 3) capture viewport.</div>
+    <img src="/snapshot/latest?stage=1" alt="Latest snapshot"/>
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
+
 @app.on_event("startup")
 async def startup_autonomous_evolution() -> None:
     _init_god_state()
