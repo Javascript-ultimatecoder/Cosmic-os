@@ -369,12 +369,7 @@ async def index() -> HTMLResponse:
                 <div class="text-sm uppercase tracking-[0.4em] text-purple-300">Cosmic Event Feed</div>
                 <div id="event" class="text-2xl text-purple-100 min-h-[80px] mt-3">The Cosmos is awakening...</div>
                 <div id="audit-meta" class="text-sm text-cyan-200/80 mt-4">No upgrades recorded yet.</div>
-                <button id="run-betabot" class="mt-5 px-5 py-3 rounded-2xl border border-pink-400 text-pink-300 hover:bg-pink-400/10">🚀 Run BetaBot Test</button>
-                <button id="run-evolution" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-cyan-400 text-cyan-300 hover:bg-cyan-400/10">🧬 Run Evolution Cycle</button>
-                <button id="capture-shot" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-lime-400 text-lime-300 hover:bg-lime-400/10">📸 Capture Screenshot</button>
-                <button id="export-state" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-sky-400 text-sky-300 hover:bg-sky-400/10">💾 Export State</button>
-                <button id="import-state" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-sky-400 text-sky-300 hover:bg-sky-400/10">♻️ Import State</button>
-                <button id="run-moore" class="mt-3 ml-2 px-5 py-3 rounded-2xl border border-indigo-400 text-indigo-300 hover:bg-indigo-400/10">🧠 Run Moore Boost</button>
+                <div id="action-bar" class="mt-4 flex flex-wrap gap-2"></div>
             </section>
         </div>
 
@@ -444,10 +439,21 @@ async def index() -> HTMLResponse:
         const companyList = document.getElementById('company-list');
         const battleList = document.getElementById('battle-list');
         const healthPill = document.getElementById('health-pill');
+        const actionBar = document.getElementById('action-bar');
         const PAGE_SIZE = 120;
         let currentPage = 0;
         let totalGods = 0;
         let pageData = [];
+
+        const actionButtons = [
+            { id: 'run-betabot', label: '🚀 Run BetaBot Test', cls: 'border-pink-400 text-pink-300 hover:bg-pink-400/10' },
+            { id: 'run-evolution', label: '🧬 Run Evolution Cycle', cls: 'border-cyan-400 text-cyan-300 hover:bg-cyan-400/10' },
+            { id: 'capture-shot', label: '📸 Capture Screenshot', cls: 'border-lime-400 text-lime-300 hover:bg-lime-400/10' },
+            { id: 'export-state', label: '💾 Export State', cls: 'border-sky-400 text-sky-300 hover:bg-sky-400/10' },
+            { id: 'import-state', label: '♻️ Import State', cls: 'border-sky-400 text-sky-300 hover:bg-sky-400/10' },
+            { id: 'run-moore', label: '🧠 Run Moore Boost', cls: 'border-indigo-400 text-indigo-300 hover:bg-indigo-400/10' },
+        ];
+        actionBar.innerHTML = actionButtons.map(btn => `<button id="${btn.id}" class="px-5 py-3 rounded-2xl border ${btn.cls}">${btn.label}</button>`).join('');
 
         async function fetchPantheonPage() {
             const rarity = rarityFilter.value;
