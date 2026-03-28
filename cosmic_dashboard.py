@@ -109,6 +109,11 @@ STATE_PATH = Path("/tmp/cosmic_state.json")
 MOORE_CYCLES = 0
 STATE_LOCK = asyncio.Lock()
 DEBATE_LOG: list[dict] = []
+AUTOMATION_POLICY = {
+    "captcha_bypass_allowed": False,
+    "note": "CAPTCHA / 'I'm not a robot' checks must be completed by a human user.",
+    "recommended_path": "Use official APIs, service accounts, or whitelisted integrations.",
+}
 
 
 def _init_god_state() -> None:
@@ -474,6 +479,11 @@ async def index() -> HTMLResponse:
             </div>
             <div id="council-log" class="grid gap-2 text-sm text-violet-100/90"></div>
         </section>
+
+        <section class="bg-black/50 border border-amber-700 rounded-3xl p-6 mt-8">
+            <h2 class="text-2xl text-amber-300 mb-4">Automation Policy</h2>
+            <div id="automation-policy" class="text-sm text-amber-100/90"></div>
+        </section>
     </div>
 
     <script>
@@ -493,6 +503,7 @@ async def index() -> HTMLResponse:
         const healthPill = document.getElementById('health-pill');
         const actionBar = document.getElementById('action-bar');
         const metricsSnippet = document.getElementById('metrics-snippet');
+        const automationPolicy = document.getElementById('automation-policy');
         const PAGE_SIZE = 120;
         let currentPage = 0;
         let totalGods = 0;
@@ -583,6 +594,9 @@ async def index() -> HTMLResponse:
 
             const metrics = await (await fetch('/metrics')).text();
             metricsSnippet.textContent = metrics.split('\\n').slice(0, 8).join('\\n');
+
+            const policy = await (await fetch('/automation_policy')).json();
+            automationPolicy.textContent = `CAPTCHA bypass allowed: ${policy.captcha_bypass_allowed}. ${policy.note} ${policy.recommended_path}`;
         }
 
         async function awakenGod(god) {
@@ -763,6 +777,11 @@ async def metrics() -> PlainTextResponse:
             f"cosmic_moore_cycles_total {MOORE_CYCLES}",
         ]
     return PlainTextResponse("\n".join(lines) + "\n")
+
+
+@app.get("/automation_policy")
+async def automation_policy() -> dict:
+    return AUTOMATION_POLICY
 
 
 @app.get("/milestone_suggest")
