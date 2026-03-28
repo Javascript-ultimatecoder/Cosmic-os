@@ -698,6 +698,34 @@ async def metrics() -> PlainTextResponse:
     return PlainTextResponse("\n".join(lines) + "\n")
 
 
+@app.get("/milestone_suggest")
+async def milestone_suggest(theme: str = "cosmic") -> dict:
+    async with STATE_LOCK:
+        population = len(GOD_STATE)
+        companies = len(COMPANIES)
+        battles = len(BATTLE_LOG)
+        tier = INTELLIGENCE_TIER
+
+    base = theme.strip().lower() or "cosmic"
+    suggestions = [
+        f"{base.title()} Genesis Ω{tier}",
+        f"{base.title()} Pantheon {population:,}",
+        f"{base.title()} Forge {companies} Companies",
+        f"{base.title()} Arena {battles} Battles",
+        f"{base.title()} Infinite Evolution",
+    ]
+    return {
+        "theme": base,
+        "signals": {
+            "tier": tier,
+            "population": population,
+            "companies": companies,
+            "battles": battles,
+        },
+        "suggestions": suggestions,
+    }
+
+
 @app.get("/pantheon")
 async def pantheon(rarity: str = "all", page: int = 1, page_size: int = 120) -> dict:
     async with STATE_LOCK:
