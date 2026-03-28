@@ -108,6 +108,7 @@ BATTLE_LOG: list[dict] = []
 STATE_PATH = Path("/tmp/cosmic_state.json")
 MOORE_CYCLES = 0
 STATE_LOCK = asyncio.Lock()
+DEBATE_LOG: list[dict] = []
 
 
 def _init_god_state() -> None:
@@ -134,6 +135,7 @@ def _save_state_to_disk() -> None:
         "god_state": list(GOD_STATE.values()),
         "companies": COMPANIES,
         "battle_log": BATTLE_LOG[-500:],
+        "debate_log": DEBATE_LOG[-500:],
         "saved_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
     }
     STATE_PATH.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
@@ -152,6 +154,8 @@ def _load_state_from_disk() -> bool:
     COMPANIES.extend(payload.get("companies", []))
     BATTLE_LOG.clear()
     BATTLE_LOG.extend(payload.get("battle_log", []))
+    DEBATE_LOG.clear()
+    DEBATE_LOG.extend(payload.get("debate_log", []))
     INTELLIGENCE_TIER = int(payload.get("intelligence_tier", INTELLIGENCE_TIER))
     EVOLUTION_TICKS = int(payload.get("evolution_ticks", EVOLUTION_TICKS))
     TOTAL_BIRTHS = int(payload.get("total_births", TOTAL_BIRTHS))
@@ -318,6 +322,43 @@ def _run_moore_acceleration(generations: int = 1) -> dict:
     }
 
 
+def _run_debate_council(topic: str, council_size: int = 9) -> dict:
+    _init_god_state()
+    candidates = list(GOD_STATE.values())
+    council = random.sample(candidates, k=min(council_size, len(candidates)))
+    positions = ["mating", "performance", "hybrid", "stability", "expansion"]
+    tallies = {p: 0.0 for p in positions}
+    transcript: list[dict] = []
+
+    for member in council:
+        stance = random.choice(positions)
+        weight = RARITY_WEIGHTS[member["rarity"]] + (member["tier"] * 0.5)
+        tallies[stance] += weight
+        transcript.append(
+            {
+                "speaker": member["name"],
+                "rarity": member["rarity"],
+                "tier": member["tier"],
+                "stance": stance,
+                "weight": round(weight, 2),
+            }
+        )
+
+    consensus = max(tallies, key=tallies.get)
+    record = {
+        "topic": topic,
+        "consensus": consensus,
+        "tallies": tallies,
+        "council_size": len(council),
+        "transcript": transcript,
+        "ts": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    DEBATE_LOG.append(record)
+    audit.record("debate_council", {"topic": topic, "consensus": consensus, "size": len(council)})
+    _save_state_to_disk()
+    return record
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
     html = """<!DOCTYPE html>
@@ -425,6 +466,14 @@ async def index() -> HTMLResponse:
             </div>
             <div id="battle-list" class="grid gap-2 text-sm text-red-100/90"></div>
         </section>
+
+        <section class="bg-black/50 border border-violet-700 rounded-3xl p-6 mt-8">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl text-violet-300 mb-4">Debate Council</h2>
+                <button id="run-council" class="px-5 py-3 rounded-2xl border border-violet-400 text-violet-300 hover:bg-violet-400/10">🗣️ Run Council</button>
+            </div>
+            <div id="council-log" class="grid gap-2 text-sm text-violet-100/90"></div>
+        </section>
     </div>
 
     <script>
@@ -440,6 +489,7 @@ async def index() -> HTMLResponse:
         const latestShot = document.getElementById('latest-shot');
         const companyList = document.getElementById('company-list');
         const battleList = document.getElementById('battle-list');
+        const councilLog = document.getElementById('council-log');
         const healthPill = document.getElementById('health-pill');
         const actionBar = document.getElementById('action-bar');
         const metricsSnippet = document.getElementById('metrics-snippet');
@@ -520,6 +570,13 @@ async def index() -> HTMLResponse:
                     <div class="opacity-80">${b.winner_score} - ${b.loser_score} • ${b.winner_rarity.toUpperCase()}</div>
                 </div>
             `).join('') || '<div class="text-red-200/80">No battles recorded yet.</div>';
+
+            councilLog.innerHTML = chronicle.recent_debates.map(d => `
+                <div class="border border-violet-500/40 rounded-2xl p-3 bg-violet-500/5">
+                    <div class="font-bold">${d.topic}</div>
+                    <div class="opacity-80">Consensus: ${d.consensus} • Council size ${d.council_size}</div>
+                </div>
+            `).join('') || '<div class="text-violet-200/80">No council debates yet.</div>';
 
             const health = await (await fetch('/healthz')).json();
             healthPill.textContent = `Health: ${health.status.toUpperCase()} • audits ${health.audit_events}`;
@@ -605,6 +662,14 @@ async def index() -> HTMLResponse:
             metaNode.textContent = `Moore cycles ${data.moore_cycles} • tier ${data.tier}`;
             await refreshStatus();
         });
+        document.getElementById('run-council').addEventListener('click', async () => {
+            const topic = encodeURIComponent('Should we prioritize expansion or stability this cycle?');
+            const res = await fetch(`/debate_council?topic=${topic}&council_size=9`, { method: 'POST' });
+            const data = await res.json();
+            eventNode.textContent = `Council consensus: ${data.consensus}`;
+            metaNode.textContent = `Debate members ${data.council_size}`;
+            await refreshStatus();
+        });
         applyFilter().catch(() => { eventNode.textContent = 'Pantheon fetch failed.'; });
         refreshStatus();
         setInterval(refreshStatus, 12000);
@@ -664,6 +729,7 @@ async def status() -> dict:
             "total_births": TOTAL_BIRTHS,
             "total_companies": len(COMPANIES),
             "total_battles": len(BATTLE_LOG),
+            "total_debates": len(DEBATE_LOG),
             "moore_cycles": MOORE_CYCLES,
             "recent_events": events,
             "state_file": str(STATE_PATH),
@@ -679,6 +745,7 @@ async def healthz() -> dict:
             "population": len(GOD_STATE) if GOD_STATE else 0,
             "companies": len(COMPANIES),
             "battles": len(BATTLE_LOG),
+            "debates": len(DEBATE_LOG),
         }
 
 
@@ -829,7 +896,17 @@ async def chronicle(limit: int = 20) -> dict:
             "total_companies": len(COMPANIES),
             "total_battles": len(BATTLE_LOG),
             "recent_battles": BATTLE_LOG[-limit:][::-1],
+            "total_debates": len(DEBATE_LOG),
+            "recent_debates": DEBATE_LOG[-limit:][::-1],
         }
+
+
+@app.post("/debate_council")
+async def debate_council(topic: str = "Should we prioritize expansion or stability?", council_size: int = 9) -> dict:
+    if council_size < 3 or council_size > 25:
+        raise HTTPException(status_code=400, detail="council_size must be between 3 and 25")
+    async with STATE_LOCK:
+        return _run_debate_council(topic=topic, council_size=council_size)
 
 
 @app.get("/state/export")
