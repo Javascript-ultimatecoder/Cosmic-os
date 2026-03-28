@@ -106,6 +106,7 @@ COMPANIES: list[dict] = []
 BATTLE_LOG: list[dict] = []
 STATE_PATH = Path("/tmp/cosmic_state.json")
 MOORE_CYCLES = 0
+STATE_LOCK = asyncio.Lock()
 
 
 def _init_god_state() -> None:
@@ -640,88 +641,93 @@ async def index() -> HTMLResponse:
 
 @app.get("/status")
 async def status() -> dict:
-    events = audit.recent_events(limit=8)
-    return {
-        "tier": INTELLIGENCE_TIER,
-        "audit_db": str(DB_PATH),
-        "audit_events": len(audit.recent_events(limit=1000)),
-        "population": len(GOD_STATE) if GOD_STATE else sum(PANTHEON_DISTRIBUTION.values()),
-        "evolution_ticks": EVOLUTION_TICKS,
-        "total_births": TOTAL_BIRTHS,
-        "total_companies": len(COMPANIES),
-        "total_battles": len(BATTLE_LOG),
-        "moore_cycles": MOORE_CYCLES,
-        "recent_events": events,
-        "state_file": str(STATE_PATH),
-    }
+    async with STATE_LOCK:
+        events = audit.recent_events(limit=8)
+        return {
+            "tier": INTELLIGENCE_TIER,
+            "audit_db": str(DB_PATH),
+            "audit_events": len(audit.recent_events(limit=1000)),
+            "population": len(GOD_STATE) if GOD_STATE else sum(PANTHEON_DISTRIBUTION.values()),
+            "evolution_ticks": EVOLUTION_TICKS,
+            "total_births": TOTAL_BIRTHS,
+            "total_companies": len(COMPANIES),
+            "total_battles": len(BATTLE_LOG),
+            "moore_cycles": MOORE_CYCLES,
+            "recent_events": events,
+            "state_file": str(STATE_PATH),
+        }
 
 
 @app.get("/healthz")
 async def healthz() -> dict:
-    return {
-        "status": "ok",
-        "audit_events": len(audit.recent_events(limit=1000)),
-        "population": len(GOD_STATE) if GOD_STATE else 0,
-        "companies": len(COMPANIES),
-        "battles": len(BATTLE_LOG),
-    }
+    async with STATE_LOCK:
+        return {
+            "status": "ok",
+            "audit_events": len(audit.recent_events(limit=1000)),
+            "population": len(GOD_STATE) if GOD_STATE else 0,
+            "companies": len(COMPANIES),
+            "battles": len(BATTLE_LOG),
+        }
 
 
 @app.get("/pantheon")
 async def pantheon(rarity: str = "all", page: int = 1, page_size: int = 120) -> dict:
-    _init_god_state()
-    if page < 1:
-        raise HTTPException(status_code=400, detail="page must be >= 1")
-    if page_size < 1 or page_size > 300:
-        raise HTTPException(status_code=400, detail="page_size must be between 1 and 300")
+    async with STATE_LOCK:
+        _init_god_state()
+        if page < 1:
+            raise HTTPException(status_code=400, detail="page must be >= 1")
+        if page_size < 1 or page_size > 300:
+            raise HTTPException(status_code=400, detail="page_size must be between 1 and 300")
 
-    rarity_key = rarity.lower()
-    if rarity_key != "all" and rarity_key not in PANTHEON_DISTRIBUTION:
-        raise HTTPException(status_code=400, detail="invalid rarity")
+        rarity_key = rarity.lower()
+        if rarity_key != "all" and rarity_key not in PANTHEON_DISTRIBUTION:
+            raise HTTPException(status_code=400, detail="invalid rarity")
 
-    rows = [
-        {
-            "name": god["name"],
-            "rarity": god["rarity"],
-            "tier": god["tier"],
-            "power": god["power"],
-            "quantumState": QUANTUM_BY_RARITY[god["rarity"]],
-            "offspring": god["offspring"],
+        rows = [
+            {
+                "name": god["name"],
+                "rarity": god["rarity"],
+                "tier": god["tier"],
+                "power": god["power"],
+                "quantumState": QUANTUM_BY_RARITY[god["rarity"]],
+                "offspring": god["offspring"],
+            }
+            for god in GOD_STATE.values()
+            if rarity_key == "all" or god["rarity"] == rarity_key
+        ]
+        rows.sort(key=lambda item: (RARITY_ORDER.index(item["rarity"]), -item["tier"], -item["power"], item["name"]))
+
+        total = len(rows)
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        if page > total_pages:
+            page = total_pages
+
+        start = (page - 1) * page_size
+        items = rows[start : start + page_size]
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "total_pages": total_pages,
+            "items": items,
         }
-        for god in GOD_STATE.values()
-        if rarity_key == "all" or god["rarity"] == rarity_key
-    ]
-    rows.sort(key=lambda item: (RARITY_ORDER.index(item["rarity"]), -item["tier"], -item["power"], item["name"]))
-
-    total = len(rows)
-    total_pages = max(1, (total + page_size - 1) // page_size)
-    if page > total_pages:
-        page = total_pages
-
-    start = (page - 1) * page_size
-    items = rows[start : start + page_size]
-    return {
-        "page": page,
-        "page_size": page_size,
-        "total": total,
-        "total_pages": total_pages,
-        "items": items,
-    }
 
 
 @app.post("/evolution_tick")
 async def evolution_tick(cycle_size: int = 18) -> dict:
     if cycle_size < 2 or cycle_size > 100:
         raise HTTPException(status_code=400, detail="cycle_size must be between 2 and 100")
-    result = _run_evolution_cycle(cycle_size=cycle_size)
+    async with STATE_LOCK:
+        result = _run_evolution_cycle(cycle_size=cycle_size)
     result["total_births"] = TOTAL_BIRTHS
     return result
 
 
 @app.post("/snapshot/capture")
 async def snapshot_capture() -> dict:
-    _init_god_state()
-    status_rows = sorted(GOD_STATE.values(), key=lambda item: (-item["tier"], -item["power"]))[:5]
+    async with STATE_LOCK:
+        _init_god_state()
+        status_rows = sorted(GOD_STATE.values(), key=lambda item: (-item["tier"], -item["power"]))[:5]
 
     image = Image.new("RGB", (1280, 720), color=(8, 8, 24))
     draw = ImageDraw.Draw(image)
@@ -742,81 +748,89 @@ async def snapshot_capture() -> dict:
         y += 26
 
     image.save(LATEST_SCREENSHOT)
-    audit.record("snapshot_capture", {"path": str(LATEST_SCREENSHOT), "population": len(GOD_STATE)})
+    async with STATE_LOCK:
+        audit.record("snapshot_capture", {"path": str(LATEST_SCREENSHOT), "population": len(GOD_STATE)})
     return {"success": True, "path": str(LATEST_SCREENSHOT), "result": "Snapshot captured for browser screenshot workflows."}
 
 
 @app.get("/companies")
 async def companies(limit: int = 20) -> dict:
-    if limit < 1 or limit > 200:
-        raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
-    items = sorted(COMPANIES, key=lambda c: c["valuation"], reverse=True)[:limit]
-    return {"total": len(COMPANIES), "items": items}
+    async with STATE_LOCK:
+        if limit < 1 or limit > 200:
+            raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
+        items = sorted(COMPANIES, key=lambda c: c["valuation"], reverse=True)[:limit]
+        return {"total": len(COMPANIES), "items": items}
 
 
 @app.get("/chronicle")
 async def chronicle(limit: int = 20) -> dict:
-    if limit < 1 or limit > 200:
-        raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
-    return {
-        "population": len(GOD_STATE),
-        "total_births": TOTAL_BIRTHS,
-        "total_companies": len(COMPANIES),
-        "total_battles": len(BATTLE_LOG),
-        "recent_battles": BATTLE_LOG[-limit:][::-1],
-    }
+    async with STATE_LOCK:
+        if limit < 1 or limit > 200:
+            raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
+        return {
+            "population": len(GOD_STATE),
+            "total_births": TOTAL_BIRTHS,
+            "total_companies": len(COMPANIES),
+            "total_battles": len(BATTLE_LOG),
+            "recent_battles": BATTLE_LOG[-limit:][::-1],
+        }
 
 
 @app.get("/state/export")
 async def state_export() -> dict:
-    _save_state_to_disk()
+    async with STATE_LOCK:
+        _save_state_to_disk()
     return {"success": True, "path": str(STATE_PATH), "exists": STATE_PATH.exists()}
 
 
 @app.post("/state/import")
 async def state_import() -> dict:
-    loaded = _load_state_from_disk()
-    if not loaded:
-        raise HTTPException(status_code=404, detail="state file not found")
-    audit.record("state_imported", {"path": str(STATE_PATH), "population": len(GOD_STATE)})
-    return {
-        "success": True,
-        "population": len(GOD_STATE),
-        "companies": len(COMPANIES),
-        "battles": len(BATTLE_LOG),
-        "tier": INTELLIGENCE_TIER,
-    }
+    async with STATE_LOCK:
+        loaded = _load_state_from_disk()
+        if not loaded:
+            raise HTTPException(status_code=404, detail="state file not found")
+        audit.record("state_imported", {"path": str(STATE_PATH), "population": len(GOD_STATE)})
+        return {
+            "success": True,
+            "population": len(GOD_STATE),
+            "companies": len(COMPANIES),
+            "battles": len(BATTLE_LOG),
+            "tier": INTELLIGENCE_TIER,
+        }
 
 
 @app.post("/spawn_company")
 async def spawn_company() -> dict:
-    _init_god_state()
-    founder = max(GOD_STATE.values(), key=lambda g: (g["tier"], g["power"]))
-    company = {
-        "name": f"{founder['name']}-OmniCorp-{len(COMPANIES) + 1}",
-        "founder": founder["name"],
-        "rarity": founder["rarity"],
-        "valuation": random.randint(8, 120) * 1_000_000,
-        "created_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
-    }
-    COMPANIES.append(company)
-    audit.record("manual_company_spawned", company)
-    _save_state_to_disk()
-    return {"success": True, "company": company, "result": f"{company['name']} has been forged."}
+    async with STATE_LOCK:
+        _init_god_state()
+        founder = max(GOD_STATE.values(), key=lambda g: (g["tier"], g["power"]))
+        company = {
+            "name": f"{founder['name']}-OmniCorp-{len(COMPANIES) + 1}",
+            "founder": founder["name"],
+            "rarity": founder["rarity"],
+            "valuation": random.randint(8, 120) * 1_000_000,
+            "created_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        }
+        COMPANIES.append(company)
+        audit.record("manual_company_spawned", company)
+        _save_state_to_disk()
+        return {"success": True, "company": company, "result": f"{company['name']} has been forged."}
 
 
 @app.post("/tournament")
 async def tournament(rounds: int = 12) -> dict:
     if rounds < 1 or rounds > 200:
         raise HTTPException(status_code=400, detail="rounds must be between 1 and 200")
-    return _run_battle_tournament(rounds=rounds)
+    async with STATE_LOCK:
+        return _run_battle_tournament(rounds=rounds)
 
 
 @app.post("/moore_boost")
 async def moore_boost(generations: int = 1) -> dict:
     if generations < 1 or generations > 6:
         raise HTTPException(status_code=400, detail="generations must be between 1 and 6")
-    return _run_moore_acceleration(generations=generations)
+    async with STATE_LOCK:
+        return _run_moore_acceleration(generations=generations)
 
 
 @app.get("/snapshot/latest")
@@ -828,13 +842,15 @@ async def snapshot_latest() -> FileResponse:
 
 @app.on_event("startup")
 async def startup_autonomous_evolution() -> None:
-    restored = _load_state_from_disk()
-    if not restored:
-        _init_god_state()
+    async with STATE_LOCK:
+        restored = _load_state_from_disk()
+        if not restored:
+            _init_god_state()
 
     async def evolver() -> None:
         while True:
-            _run_evolution_cycle(cycle_size=6)
+            async with STATE_LOCK:
+                _run_evolution_cycle(cycle_size=6)
             await asyncio.sleep(25)
 
     asyncio.create_task(evolver())
