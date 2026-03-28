@@ -35,3 +35,4 @@ Cosmic OS does **not** include or support CAPTCHA bypassing tools, scripts, or w
 - Do not integrate repositories or packages that attempt to bypass "I'm not a robot" checks.
 - Use official APIs, service accounts, allowlisted integrations, or human-completed verification when CAPTCHA is present.
 - Use `GET /automation_policy` in the app to programmatically enforce this rule in automation pipelines.
+- Use `POST /compliance_check` with candidate text/config to flag disallowed CAPTCHA-bypass patterns before execution.

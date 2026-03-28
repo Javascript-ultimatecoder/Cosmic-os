@@ -114,6 +114,13 @@ AUTOMATION_POLICY = {
     "note": "CAPTCHA / 'I'm not a robot' checks must be completed by a human user.",
     "recommended_path": "Use official APIs, service accounts, or whitelisted integrations.",
 }
+DISALLOWED_AUTOMATION_KEYWORDS = [
+    "captcha bypass",
+    "recaptcha_v2",
+    "solve captcha",
+    "i'm not a robot",
+    "audio captcha",
+]
 
 
 def _init_god_state() -> None:
@@ -782,6 +789,18 @@ async def metrics() -> PlainTextResponse:
 @app.get("/automation_policy")
 async def automation_policy() -> dict:
     return AUTOMATION_POLICY
+
+
+@app.post("/compliance_check")
+async def compliance_check(request: Request) -> dict:
+    payload = await request.json()
+    text = str(payload.get("text", "")).lower()
+    hits = [kw for kw in DISALLOWED_AUTOMATION_KEYWORDS if kw in text]
+    return {
+        "allowed": len(hits) == 0,
+        "matches": hits,
+        "policy": AUTOMATION_POLICY,
+    }
 
 
 @app.get("/milestone_suggest")
