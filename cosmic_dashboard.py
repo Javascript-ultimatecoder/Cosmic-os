@@ -15,6 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse
+from fastapi.responses import PlainTextResponse
 import uvicorn
 from PIL import Image, ImageDraw, ImageFont
 
@@ -401,6 +402,7 @@ async def index() -> HTMLResponse:
         <section class="bg-black/50 border border-cyan-600 rounded-3xl p-6">
             <h2 class="text-2xl text-cyan-300 mb-4">Recent Audit Events</h2>
             <div id="recent-events" class="grid gap-3 text-sm text-cyan-100/90"></div>
+            <pre id="metrics-snippet" class="mt-4 p-3 bg-cyan-900/20 border border-cyan-500/30 rounded-xl text-xs text-cyan-100 whitespace-pre-wrap"></pre>
         </section>
 
         <section class="bg-black/50 border border-lime-600 rounded-3xl p-6 mt-8">
@@ -440,6 +442,7 @@ async def index() -> HTMLResponse:
         const battleList = document.getElementById('battle-list');
         const healthPill = document.getElementById('health-pill');
         const actionBar = document.getElementById('action-bar');
+        const metricsSnippet = document.getElementById('metrics-snippet');
         const PAGE_SIZE = 120;
         let currentPage = 0;
         let totalGods = 0;
@@ -520,6 +523,9 @@ async def index() -> HTMLResponse:
 
             const health = await (await fetch('/healthz')).json();
             healthPill.textContent = `Health: ${health.status.toUpperCase()} • audits ${health.audit_events}`;
+
+            const metrics = await (await fetch('/metrics')).text();
+            metricsSnippet.textContent = metrics.split('\\n').slice(0, 8).join('\\n');
         }
 
         async function awakenGod(god) {
@@ -674,6 +680,22 @@ async def healthz() -> dict:
             "companies": len(COMPANIES),
             "battles": len(BATTLE_LOG),
         }
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics() -> PlainTextResponse:
+    async with STATE_LOCK:
+        lines = [
+            "# cosmic_os metrics",
+            f"cosmic_tier {INTELLIGENCE_TIER}",
+            f"cosmic_population {len(GOD_STATE)}",
+            f"cosmic_companies {len(COMPANIES)}",
+            f"cosmic_battles_total {len(BATTLE_LOG)}",
+            f"cosmic_evolution_ticks_total {EVOLUTION_TICKS}",
+            f"cosmic_births_total {TOTAL_BIRTHS}",
+            f"cosmic_moore_cycles_total {MOORE_CYCLES}",
+        ]
+    return PlainTextResponse("\n".join(lines) + "\n")
 
 
 @app.get("/pantheon")
