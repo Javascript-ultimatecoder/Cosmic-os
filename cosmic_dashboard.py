@@ -18,7 +18,7 @@ import uvicorn
 DB_PATH = Path("omega_ultra_audit.db")
 DEFAULT_TIER = 0
 MAX_TIER = 10
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.4.0"
 INTELLIGENCE_TIER = DEFAULT_TIER
 RARITY_COUNTS = {
     "common": 600,
@@ -30,10 +30,33 @@ RARITY_COUNTS = {
     "prismatic": 10,
 }
 TOTAL_ENTITIES = sum(RARITY_COUNTS.values())
+UPDATE_CHANNEL = [
+    {
+        "code": "omega-awakening-feed",
+        "title": "Awakening feed online",
+        "detail": "Pantheon actions now flow into an always-on update channel.",
+    },
+    {
+        "code": "rarity-sync",
+        "title": "Rarity telemetry stabilized",
+        "detail": "The dashboard tracks rarity totals and visible entities in sync.",
+    },
+    {
+        "code": "audit-orbit",
+        "title": "Audit orbit engaged",
+        "detail": "Each cosmic mutation is written to the audit ledger for replay.",
+    },
+    {
+        "code": "mutation-lab",
+        "title": "Mutation lab unlocked",
+        "detail": "Spawn custom updates with the broadcast endpoint to keep evolving the grid.",
+    },
+]
 
 
 class AuditLedger:
     def __init__(self, db_path: Path = DB_PATH):
+        self.db_path = db_path
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, ts TEXT, type TEXT, payload TEXT)"
@@ -66,6 +89,11 @@ class AuditLedger:
                 for row in cursor.fetchall()
             ]
 
+    def count(self) -> int:
+        with closing(self.conn.execute("SELECT COUNT(*) FROM events")) as cursor:
+            row = cursor.fetchone()
+        return int(row[0]) if row else 0
+
 
 audit = AuditLedger()
 app = FastAPI(title="Cosmic Operating System", version=APP_VERSION)
@@ -76,6 +104,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def current_timestamp() -> str:
+    return datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def build_updates(events: list[dict]) -> list[dict]:
+    latest_updates = list(UPDATE_CHANNEL)
+    for event in events[:4]:
+        latest_updates.insert(
+            0,
+            {
+                "code": event["type"],
+                "title": f"{event['type'].replace('_', ' ').title()} recorded",
+                "detail": json.dumps(event["payload"], sort_keys=True),
+                "timestamp": event["ts"],
+            },
+        )
+    return latest_updates[:6]
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -212,6 +259,10 @@ async def index() -> HTMLResponse:
                                     <dt>Entity Budget</dt>
                                     <dd>{TOTAL_ENTITIES}</dd>
                                 </div>
+                                <div class="flex items-center justify-between gap-4">
+                                    <dt>Update Channel</dt>
+                                    <dd id="update-channel-size">0</dd>
+                                </div>
                             </dl>
                         </div>
                     </div>
@@ -225,34 +276,52 @@ async def index() -> HTMLResponse:
             </aside>
         </section>
 
-        <section class="glass-panel border border-purple-500 rounded-3xl p-6 md:p-8">
-            <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 mb-6">
-                <div>
-                    <h2 class="text-2xl md:text-3xl text-fuchsia-300">Pantheon Control Grid</h2>
-                    <p class="text-sm md:text-base text-cyan-200/80 mt-2">Filter the pantheon, then trigger a force-awakening to append a new audit event.</p>
+        <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] mb-6">
+            <div class="glass-panel border border-purple-500 rounded-3xl p-6 md:p-8">
+                <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 mb-6">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl text-fuchsia-300">Pantheon Control Grid</h2>
+                        <p class="text-sm md:text-base text-cyan-200/80 mt-2">Filter the pantheon, then trigger a force-awakening to append a new audit event.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 xl:min-w-[30rem]">
+                        <label class="flex-1">
+                            <span class="sr-only">Search gods</span>
+                            <input id="god-search" type="search" placeholder="Search pantheon by entity name" class="w-full rounded-full border border-cyan-400/40 bg-black/40 px-4 py-3 text-cyan-100 placeholder:text-cyan-300/45 focus:border-fuchsia-400 focus:outline-none" />
+                        </label>
+                        <label>
+                            <span class="sr-only">Filter by rarity</span>
+                            <select id="rarity-filter" class="w-full rounded-full border border-cyan-400/40 bg-black/40 px-4 py-3 text-cyan-100 focus:border-fuchsia-400 focus:outline-none">
+                                <option value="all">All rarities</option>
+                                <option value="common">Common</option>
+                                <option value="uncommon">Uncommon</option>
+                                <option value="rare">Rare</option>
+                                <option value="legendary">Legendary</option>
+                                <option value="divine">Divine</option>
+                                <option value="mythical">Mythical</option>
+                                <option value="prismatic">Prismatic</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-3 xl:min-w-[30rem]">
-                    <label class="flex-1">
-                        <span class="sr-only">Search gods</span>
-                        <input id="god-search" type="search" placeholder="Search pantheon by entity name" class="w-full rounded-full border border-cyan-400/40 bg-black/40 px-4 py-3 text-cyan-100 placeholder:text-cyan-300/45 focus:border-fuchsia-400 focus:outline-none" />
-                    </label>
-                    <label>
-                        <span class="sr-only">Filter by rarity</span>
-                        <select id="rarity-filter" class="w-full rounded-full border border-cyan-400/40 bg-black/40 px-4 py-3 text-cyan-100 focus:border-fuchsia-400 focus:outline-none">
-                            <option value="all">All rarities</option>
-                            <option value="common">Common</option>
-                            <option value="uncommon">Uncommon</option>
-                            <option value="rare">Rare</option>
-                            <option value="legendary">Legendary</option>
-                            <option value="divine">Divine</option>
-                            <option value="mythical">Mythical</option>
-                            <option value="prismatic">Prismatic</option>
-                        </select>
-                    </label>
-                </div>
+                <div id="rarity-summary" class="flex flex-wrap gap-2 text-xs text-cyan-100/85 mb-5"></div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8 gap-3" id="pantheon"></div>
             </div>
-            <div id="rarity-summary" class="flex flex-wrap gap-2 text-xs text-cyan-100/85 mb-5"></div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8 gap-3" id="pantheon"></div>
+
+            <aside class="glass-panel border border-emerald-500 rounded-3xl p-6 md:p-8">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <div class="metric-label text-emerald-300">Live Update Channel</div>
+                        <p class="text-sm text-emerald-100/75 mt-2">Ship continuous code-energy into the dashboard without restarting the cosmos.</p>
+                    </div>
+                    <button id="sync-updates" class="px-4 py-2 rounded-full border border-emerald-300 text-emerald-200 hover:bg-emerald-500/10">Sync</button>
+                </div>
+                <form id="broadcast-form" class="grid gap-3 mt-6">
+                    <input id="broadcast-title" type="text" placeholder="Update title" class="rounded-2xl border border-emerald-400/40 bg-black/40 px-4 py-3 text-emerald-100 placeholder:text-emerald-300/45 focus:border-fuchsia-400 focus:outline-none" />
+                    <textarea id="broadcast-detail" rows="4" placeholder="Describe the new cosmic update" class="rounded-2xl border border-emerald-400/40 bg-black/40 px-4 py-3 text-emerald-100 placeholder:text-emerald-300/45 focus:border-fuchsia-400 focus:outline-none"></textarea>
+                    <button class="rounded-full bg-emerald-500/20 border border-emerald-400 px-4 py-3 text-emerald-100 hover:bg-emerald-500/30" type="submit">Broadcast Update</button>
+                </form>
+                <div id="update-stream" class="grid gap-3 mt-6"></div>
+            </aside>
         </section>
     </div>
 
@@ -278,6 +347,11 @@ async def index() -> HTMLResponse:
         const raritySummaryNode = document.getElementById('rarity-summary');
         const entityCountNode = document.getElementById('entity-count');
         const versionNode = document.getElementById('api-version');
+        const updateChannelSizeNode = document.getElementById('update-channel-size');
+        const updateStreamNode = document.getElementById('update-stream');
+        const broadcastFormNode = document.getElementById('broadcast-form');
+        const broadcastTitleNode = document.getElementById('broadcast-title');
+        const broadcastDetailNode = document.getElementById('broadcast-detail');
 
         entityCountNode.textContent = String(cosmicData.totalEntities);
         versionNode.textContent = cosmicData.version;
@@ -419,6 +493,22 @@ async def index() -> HTMLResponse:
             `).join('') || '<div class="text-cyan-100/70">No cosmic events yet.</div>';
         }}
 
+        function renderUpdates(updates) {{
+            updateChannelSizeNode.textContent = String(updates.length);
+            updateStreamNode.innerHTML = updates.map((item) => `
+                <div class="rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-4">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                            <div class="text-emerald-200 font-bold">${{item.title}}</div>
+                            <div class="text-xs text-emerald-300/70 mt-1 uppercase tracking-[0.22em]">${{item.code}}</div>
+                        </div>
+                        <div class="text-xs text-emerald-100/60">${{item.timestamp || 'seeded update'}}</div>
+                    </div>
+                    <p class="text-sm text-emerald-100/85 mt-3">${{item.detail}}</p>
+                </div>
+            `).join('');
+        }}
+
         async function refreshStatus() {{
             const response = await fetch('/status');
             const data = await response.json();
@@ -427,6 +517,7 @@ async def index() -> HTMLResponse:
             entityCountNode.textContent = String(data.total_entities ?? cosmicData.totalEntities);
             versionNode.textContent = data.version ?? cosmicData.version;
             renderEvents(data.recent_events, data.audit_events);
+            renderUpdates(data.live_updates || []);
         }}
 
         async function awakenGod(god) {{
@@ -489,6 +580,31 @@ async def index() -> HTMLResponse:
             await refreshStatus();
         }}
 
+        async function syncUpdates() {{
+            const response = await fetch('/updates');
+            const data = await response.json();
+            renderUpdates(data.updates || []);
+        }}
+
+        async function broadcastUpdate(event) {{
+            event.preventDefault();
+            const title = broadcastTitleNode.value.trim();
+            const detail = broadcastDetailNode.value.trim();
+            if (!title || !detail) {{
+                eventNode.textContent = 'Broadcast requires both a title and detail.';
+                return;
+            }}
+            const response = await fetch('/broadcast_update', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ title, detail }}),
+            }});
+            const data = await response.json();
+            eventNode.textContent = data.result;
+            broadcastFormNode.reset();
+            await refreshStatus();
+        }}
+
         pantheonNode.addEventListener('click', (event) => {{
             const performanceButton = event.target.closest('[data-performance-god]');
             if (performanceButton) {{
@@ -513,11 +629,14 @@ async def index() -> HTMLResponse:
 
         searchNode.addEventListener('input', applyFilters);
         rarityNode.addEventListener('change', applyFilters);
+        broadcastFormNode.addEventListener('submit', broadcastUpdate);
         document.getElementById('refresh-feed').addEventListener('click', refreshStatus);
+        document.getElementById('sync-updates').addEventListener('click', syncUpdates);
         window.addEventListener('resize', resizeCanvas);
 
         applyFilters();
         refreshStatus();
+        syncUpdates();
         engine();
     </script>
 </body>
@@ -530,12 +649,23 @@ async def status() -> dict:
     events = audit.recent_events(limit=8)
     return {
         "tier": INTELLIGENCE_TIER,
-        "audit_db": str(DB_PATH),
-        "audit_events": len(audit.recent_events(limit=1000)),
+        "audit_db": str(audit.db_path),
+        "audit_events": audit.count(),
         "recent_events": events,
         "pantheon": RARITY_COUNTS,
         "total_entities": TOTAL_ENTITIES,
         "version": APP_VERSION,
+        "live_updates": build_updates(events),
+    }
+
+
+@app.get("/updates")
+async def updates() -> dict:
+    events = audit.recent_events(limit=6)
+    return {
+        "version": APP_VERSION,
+        "updates": build_updates(events),
+        "generated_at": current_timestamp(),
     }
 
 
@@ -550,7 +680,7 @@ async def upgrade(request: Request) -> dict:
         raise HTTPException(status_code=400, detail=f"tier must be between {DEFAULT_TIER} and {MAX_TIER}")
 
     INTELLIGENCE_TIER = max(INTELLIGENCE_TIER, requested_tier)
-    timestamp = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    timestamp = current_timestamp()
     event_id = audit.record(
         "upgrade_intelligence",
         {"god": god, "requested_tier": requested_tier, "result_tier": INTELLIGENCE_TIER},
@@ -568,7 +698,7 @@ async def upgrade(request: Request) -> dict:
 async def evolve_performance(request: Request) -> dict:
     payload = await request.json()
     god_name = payload.get("god", "Unknown entity")
-    timestamp = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    timestamp = current_timestamp()
     event_id = audit.record(
         "performance_evolution",
         {"god": god_name, "boost": "power + rarity"},
@@ -587,7 +717,7 @@ async def mate_gods(request: Request) -> dict:
     god1 = payload.get("god1", "Unknown entity")
     god2 = payload.get("god2", "Unknown entity")
     new_child = f"ChildOf_{god1}_{god2}"
-    timestamp = datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    timestamp = current_timestamp()
     event_id = audit.record(
         "mating_evolution",
         {"parents": [god1, god2], "child": new_child},
@@ -598,6 +728,27 @@ async def mate_gods(request: Request) -> dict:
         "timestamp": timestamp,
         "child": new_child,
         "result": f"{god1} + {god2} mated! New god created: {new_child}",
+    }
+
+
+@app.post("/broadcast_update")
+async def broadcast_update(request: Request) -> dict:
+    payload = await request.json()
+    title = str(payload.get("title", "")).strip()
+    detail = str(payload.get("detail", "")).strip()
+    if not title or not detail:
+        raise HTTPException(status_code=400, detail="title and detail are required")
+
+    timestamp = current_timestamp()
+    event_id = audit.record(
+        "broadcast_update",
+        {"title": title, "detail": detail},
+    )
+    return {
+        "success": True,
+        "event_id": event_id,
+        "timestamp": timestamp,
+        "result": f"Broadcast update transmitted: {title}",
     }
 
 
