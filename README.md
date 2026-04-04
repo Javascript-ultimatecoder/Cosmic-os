@@ -9,6 +9,31 @@ python cosmic_dashboard.py
 
 The app serves an animated FastAPI dashboard on `http://127.0.0.1:8080` with audit-backed intelligence upgrades, a live status feed, pantheon filtering, runtime metadata, and rarity metrics.
 
+## Codex environment setup
+
+If you are creating a fresh Codex environment for real browser screenshots and the full dashboard workflow, add these values in the **New Environment** screen before you boot the repo:
+
+### Secrets
+
+- `STRIPE_SECRET_KEY=sk_live_...` (or `sk_test_...` for testing)
+- `STRIPE_WEBHOOK_SECRET=whsec_...`
+- `BINANCE_API_KEY=...`
+- `BINANCE_SECRET=...`
+- `OPENAI_API_KEY=sk-...`
+
+### Environment variables
+
+- `PLAYWRIGHT_BROWSERS_PATH=0`
+
+After saving the environment, install the browser tooling once:
+
+```bash
+pip install playwright fastapi uvicorn
+playwright install chromium
+```
+
+If `playwright install chromium` is blocked by the environment, keep using the bundled helper scripts in this repo and point them at a system Chromium binary instead.
+
 ## Screenshot workflows
 
 ### Isolated screenshot environment setup
@@ -34,6 +59,8 @@ Use the Playwright-based helper to capture a real browser rendering of the app:
 
 ```bash
 python scripts/browser_screenshot.py screenshots/browser_dashboard.png --url http://127.0.0.1:8080/
+# or via the built-in FastAPI endpoint
+curl http://127.0.0.1:8080/screenshot
 ```
 
 Install the browser automation dependency once, then provide either a Playwright-managed browser or a system Chromium binary:

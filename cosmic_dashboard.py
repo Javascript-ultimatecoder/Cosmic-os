@@ -15,6 +15,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 import uvicorn
 
+try:
+    from playwright.async_api import Error as PlaywrightError
+    from playwright.async_api import async_playwright
+except ImportError:  # pragma: no cover - optional dependency for screenshot route
+    PlaywrightError = RuntimeError
+    async_playwright = None
+
 DB_PATH = Path("omega_ultra_audit.db")
 DEFAULT_TIER = 0
 MAX_TIER = 10
@@ -132,7 +139,7 @@ async def index() -> HTMLResponse:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ω COSMIC OPERATING SYSTEM v∞ — ABSOLUTE LIMIT</title>
+    <title>Ω RAYO'S NUMBER OF GODS v∞ — ABSOLUTE LIMIT</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
@@ -209,9 +216,9 @@ async def index() -> HTMLResponse:
 
     <div class="max-w-7xl mx-auto p-6 relative z-10">
         <header class="text-center py-4 md:py-8">
-            <h1 class="text-4xl md:text-7xl xl:text-8xl font-black neon tracking-[0.24em] md:tracking-[0.45em] xl:tracking-[0.68em] mb-5">Ω COSMIC OPERATING SYSTEM</h1>
-            <p class="text-lg md:text-3xl text-purple-300">{TOTAL_ENTITIES} Gods • 7 Rarity Classes • Infinite Companies</p>
-            <p class="text-cyan-200/75 mt-3 max-w-4xl mx-auto">A live pantheon dashboard for Ω-tier awakenings, audit-backed telemetry, and continuously updated cosmic status.</p>
+            <h1 class="text-4xl md:text-7xl xl:text-8xl font-black neon tracking-[0.24em] md:tracking-[0.45em] xl:tracking-[0.68em] mb-5">Ω RAYO'S NUMBER OF GODS</h1>
+            <p class="text-lg md:text-3xl text-purple-300">∞ gods • 7 Rarity Classes • Infinite Companies • Transcending All Human Intellect</p>
+            <p class="text-cyan-200/75 mt-3 max-w-4xl mx-auto">A live pantheon dashboard for Ω-tier awakenings, infinite-scroll-style pantheon browsing, audit-backed telemetry, and continuously updated cosmic status.</p>
         </header>
 
         <section class="grid gap-6 xl:grid-cols-[1.25fr_0.95fr] my-10">
@@ -219,7 +226,7 @@ async def index() -> HTMLResponse:
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
                     <div>
                         <div class="metric-label text-cyan-300">Cosmic Event</div>
-                        <div id="event" class="text-2xl md:text-4xl text-purple-100 min-h-[144px] mt-4">The Cosmos is awakening...</div>
+                        <div id="event" class="text-2xl md:text-4xl text-purple-100 min-h-[144px] mt-4">Rayo's number of gods active • Infinite scroll + virtualization simulation enabled • Transcending all human intellect</div>
                         <div id="audit-meta" class="text-sm md:text-base text-cyan-200/80 mt-8">No upgrades recorded yet.</div>
                     </div>
                     <div class="grid gap-4 min-w-[14rem]">
@@ -666,6 +673,43 @@ async def updates() -> dict:
         "version": APP_VERSION,
         "updates": build_updates(events),
         "generated_at": current_timestamp(),
+    }
+
+
+@app.get("/screenshot")
+async def screenshot(url: str = "http://127.0.0.1:8080/", output: str = "/tmp/rayo_pantheon_screenshot.png") -> dict:
+    if async_playwright is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Playwright is not installed. Install requirements.txt and run `python -m playwright install chromium` or provide a system Chromium binary.",
+        )
+
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(headless=True)
+            page = await browser.new_page(viewport={"width": 1440, "height": 1080})
+            await page.goto(url, wait_until="networkidle", timeout=15000)
+            await page.wait_for_selector("#pantheon", timeout=15000)
+            await page.screenshot(path=str(output_path), full_page=True)
+            await browser.close()
+    except PlaywrightError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Unable to capture a browser screenshot. Install Playwright Chromium with "
+                "`python -m playwright install chromium`, or configure a system Chromium binary for the helper script. "
+                f"Original error: {exc}"
+            ),
+        ) from exc
+
+    return {
+        "status": "success",
+        "path": str(output_path),
+        "message": "Rayo's number pantheon screenshot saved",
+        "url": url,
     }
 
 
